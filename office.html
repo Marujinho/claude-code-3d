@@ -165,6 +165,8 @@
   .opt i { display: block; font-style: normal; font-size: 13px; color: var(--muted); }
   .opt i.warn { color: #b13e53; }
   .set .row .btn[hidden] { display: none; }
+  .chars { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; }
+  .photo { display: block; width: 100%; max-width: 120px; aspect-ratio: 1; margin-bottom: 6px; border-radius: 10px; }
 </style>
 </head>
 <body>
@@ -235,7 +237,11 @@
   <form class="panel set" id="setForm" method="dialog">
     <p class="set-kicker" id="setKicker">Paused</p>
     <h2 id="setTitle">Settings</h2>
-    <p class="note" id="setIntro" hidden>Welcome! Choose what Claude can do in this page’s chat. You can change it anytime in ⚙ Settings.</p>
+    <p class="note" id="setIntro" hidden>Welcome! Pick your character and choose what Claude can do in this page’s chat. You can change it anytime in ⚙ Settings.</p>
+    <fieldset>
+      <legend>Choose your character</legend>
+      <div class="chars" id="charList"></div>
+    </fieldset>
     <fieldset>
       <legend>Chat permissions</legend>
       <label class="opt"><input type="checkbox" checked disabled><span><b>Read files</b><i>always on: read and search the project</i></span></label>
@@ -615,7 +621,122 @@ applyTheme();
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
-/* ================= character ================= */
+/* ================= characters (chosen in /settings) ================= */
+// Each one: colors for the shared rig (skin, shirt, pants, shoes, belt), `accent` for the picker photo's backdrop, and build(head, chest)
+// adding the face, hair and accessories to the head and extras to the torso. Return { lasers } for beams shown while coding/done.
+// To add a character, add an entry here; the settings screen lists them all.
+const CHARACTERS = {
+  gamer: {
+    name: 'Gamer', blurb: 'tired, long hair, RGB headset',
+    colors: { skin: 0xf2c98a, shirt: 0x3b5dc9, pants: 0x29366f, shoes: 0x5e2f24, belt: 0x5e2f24 }, accent: 0x3a2618,
+    build(head) {
+      // tired face: droopy eyelids, dark circles and a limp mouth
+      [-1, 1].forEach(s => {
+        const e = blob(sphere(0.04), 0.04, 0x1a1c2c); e.castShadow = false; e.position.set(s * 0.11, 0.03, 0.27); head.add(e);
+        const lid = new THREE.Mesh(new THREE.SphereGeometry(0.047, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(0xe8b878));
+        lid.position.copy(e.position); lid.rotation.set(0.45, 0, -s * 0.22); head.add(lid);                                  // half closed, drooping outward
+        const bag = blob(sphere(0.04), 0, 0x9c7480); bag.castShadow = false; bag.scale.set(1.2, 0.35, 0.4); bag.position.set(s * 0.11, -0.03, 0.272); head.add(bag);   // dark circle
+      });
+      const mouthM = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.011, 6, 12, Math.PI), mat(0x7a3b3b)); mouthM.scale.y = 0.45; mouthM.position.set(0.01, -0.15, 0.262); head.add(mouthM);
+      // long messy hair (sits under the headset)
+      const HAIR = 0x3a2618;
+      const hairTop = new THREE.Mesh(new THREE.SphereGeometry(0.325, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), mat(HAIR)); hairTop.castShadow = true;
+      hairTop.position.y = 0.03; hairTop.rotation.x = -0.25; hairTop.scale.set(1.06, 1, 1.06); head.add(hairTop);
+      const hairBack = blob(sphere(0.3), 0, HAIR); hairBack.scale.set(1.08, 1.45, 0.7); hairBack.position.set(0, -0.2, -0.13); head.add(hairBack);   // down to the shoulders
+      [-1, 1].forEach(s => { const lock = blob(sphere(0.1), 0, HAIR); lock.scale.set(0.7, 2.1, 0.9); lock.position.set(s * 0.27, -0.2, 0.06); lock.rotation.z = s * 0.12; head.add(lock); });   // side locks
+      [[-0.16, 0.5], [-0.05, 0.1], [0.07, -0.3], [0.18, -0.6]].forEach(([x, rz]) => {   // bangs falling over the forehead
+        const f = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.2, 8), mat(HAIR)); f.castShadow = true;
+        f.position.set(x, 0.18, 0.25); f.rotation.set(Math.PI + 0.3, 0, rz); head.add(f);
+      });
+      [[-0.08, 0.6, 0.3], [0.1, -0.5, -0.4], [0, 0.1, 0.9]].forEach(([x, rx, rz]) => {   // spiky strands on top
+        const sp = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 6), mat(HAIR)); sp.castShadow = true;
+        sp.position.set(x, 0.33, rx * 0.1); sp.rotation.set(rx, 0, rz); head.add(sp);
+      });
+      // gaming headset with LED ear cups and mic
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.035, 8, 20, Math.PI), mat(0x1c1a24)); band.position.y = 0.02; head.add(band);
+      [-1, 1].forEach(s => {
+        const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.09, 16), mat(0x1c1a24)); cup.castShadow = true; cup.rotation.z = Math.PI / 2; cup.position.set(s * 0.33, 0, 0); head.add(cup);
+        const cupLed = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.1, 16), ledMat(0.6)); cupLed.rotation.z = Math.PI / 2; cupLed.position.copy(cup.position); head.add(cupLed);
+      });
+      const micArm = box(0.025, 0.025, 0.24, 0x1c1a24); micArm.position.set(-0.3, -0.1, 0.14); micArm.rotation.y = -0.35; head.add(micArm);
+      const micTip = blob(sphere(0.035), 0, 0x1c1a24); micTip.position.set(-0.22, -0.1, 0.26); head.add(micTip);
+    },
+  },
+  crypto: {
+    name: 'Crypto Boy', blurb: 'backwards cap, shades, laser eyes',
+    colors: { skin: 0xe0ac7e, shirt: 0x1b1b22, pants: 0x6b6f7a, shoes: 0xf2f2f2, belt: 0x1b1b22 }, accent: 0xf7931a,
+    build(head, chest) {
+      // short hair under a backwards snapback
+      const HAIR = 0x2b1d14, CAP = 0x16161c;
+      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.31, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.5), mat(HAIR)); hair.castShadow = true;
+      hair.position.y = 0.01; hair.rotation.x = -0.15; head.add(hair);
+      const crown = new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.5), mat(CAP)); crown.castShadow = true;
+      crown.position.y = 0.07; crown.scale.set(1.04, 0.85, 1.04); head.add(crown);
+      const brim = box(0.36, 0.025, 0.22, CAP); brim.position.set(0, 0.08, -0.38); brim.rotation.x = -0.12; head.add(brim);   // brim at the back
+      const button = blob(sphere(0.03), 0, 0xf7931a); button.position.y = 0.34; head.add(button);
+      // dark shades with temple arms
+      const shades = box(0.44, 0.09, 0.05, 0x0d0d12); shades.position.set(0, 0.04, 0.28); head.add(shades);
+      [-1, 1].forEach(s => { const t = box(0.02, 0.02, 0.28, 0x0d0d12); t.position.set(s * 0.29, 0.05, 0.13); head.add(t); });
+      // smirk
+      const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.011, 6, 12, Math.PI * 0.6), mat(0x7a3b3b)); mouth.rotation.z = Math.PI + 0.5; mouth.position.set(0.03, -0.12, 0.27); head.add(mouth);
+      // laser eyes: only while coding or celebrating (see the loop)
+      const lasers = [-1, 1].map(s => {
+        const l = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.2, 8), new THREE.MeshBasicMaterial({ color: 0xff2a2a, transparent: true, opacity: 0.8, toneMapped: false }));
+        l.rotation.x = Math.PI / 2; l.position.set(s * 0.11, 0.04, 0.9); l.visible = false; head.add(l);
+        return l;
+      });
+      // hoodie: hood behind the neck, gold chain with a coin pendant
+      const hood = blob(sphere(0.2), 0, 0x1b1b22); hood.scale.set(1.4, 0.6, 0.8); hood.position.set(0, 0.5, -0.17); chest.add(hood);
+      const gold = new THREE.MeshStandardMaterial({ color: 0xffc94a, metalness: 0.8, roughness: 0.3 });
+      const chain = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.016, 8, 20, Math.PI), gold); chain.rotation.z = Math.PI; chain.position.set(0, 0.47, 0.21); chest.add(chain);
+      const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.02, 24), gold); coin.rotation.x = Math.PI / 2; coin.position.set(0, 0.26, 0.215); chest.add(coin);
+      const face = new THREE.Mesh(new THREE.CircleGeometry(0.075, 24), new THREE.MeshStandardMaterial({ map: coinTexture(), roughness: 0.5 })); face.position.set(0, 0.26, 0.227); chest.add(face);
+      return { lasers };
+    },
+  },
+  mei: {
+    name: 'Mei', blurb: 'hair buns, red mandarin-collar jacket',
+    colors: { skin: 0xf5d6b8, shirt: 0xc8102e, pants: 0x1a1a1f, shoes: 0xf4f4f4, belt: 0xd4a537 }, accent: 0xd4a537,
+    build(head, chest) {
+      // cheerful face: bright eyes, rosy cheeks, smile
+      [-1, 1].forEach(s => {
+        const e = blob(sphere(0.04), 0.04, 0x1a1c2c); e.castShadow = false; e.position.set(s * 0.11, 0.03, 0.27); head.add(e);
+        const shine = blob(sphere(0.012), 0, 0xffffff); shine.castShadow = false; shine.position.set(s * 0.11 + 0.015, 0.05, 0.305); head.add(shine);
+        const cheek = blob(sphere(0.045), 0, 0xf2a0a8); cheek.castShadow = false; cheek.scale.set(1.2, 0.6, 0.3); cheek.position.set(s * 0.17, -0.06, 0.25); head.add(cheek);
+      });
+      const smile = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.011, 6, 12, Math.PI), mat(0x9c3b4b)); smile.rotation.z = Math.PI; smile.scale.y = 0.6; smile.position.set(0, -0.11, 0.265); head.add(smile);
+      // straight black hair: full bangs, sides, long back and two buns with red ribbons
+      const HAIR = 0x14110f;
+      const top = new THREE.Mesh(new THREE.SphereGeometry(0.325, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), mat(HAIR)); top.castShadow = true;
+      top.position.y = 0.03; top.rotation.x = -0.2; top.scale.set(1.05, 1, 1.05); head.add(top);
+      const bangs = blob(sphere(0.3), 0, HAIR); bangs.scale.set(1.02, 0.33, 0.5); bangs.position.set(0, 0.19, 0.13); head.add(bangs);
+      [-1, 1].forEach(s => { const side = box(0.08, 0.45, 0.2, HAIR); side.position.set(s * 0.28, -0.12, 0.02); head.add(side); });
+      const back = blob(sphere(0.3), 0, HAIR); back.scale.set(1.05, 1.9, 0.6); back.position.set(0, -0.3, -0.14); head.add(back);
+      [-1, 1].forEach(s => {
+        const bun = blob(sphere(0.12), 0, HAIR); bun.position.set(s * 0.2, 0.3, -0.05); head.add(bun);
+        const ribbon = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.022, 8, 18), mat(0xe8283c)); ribbon.rotation.x = Math.PI / 2; ribbon.position.set(s * 0.2, 0.24, -0.05); head.add(ribbon);
+      });
+      // mandarin collar with gold trim and frog buttons down the front
+      const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.16, 0.08, 20), mat(0xc8102e)); collar.position.y = 0.5; chest.add(collar);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.012, 6, 20), mat(0xd4a537)); rim.rotation.x = Math.PI / 2; rim.position.y = 0.54; chest.add(rim);
+      const trim = box(0.025, 0.42, 0.01, 0xd4a537); trim.position.set(0.07, 0.25, 0.202); chest.add(trim);
+      [0.4, 0.28, 0.16].forEach(y => { const f = box(0.12, 0.022, 0.012, 0xd4a537); f.position.set(0.07, y, 0.206); chest.add(f); });
+    },
+  },
+};
+const DEFAULT_CHARACTER = 'gamer';
+let coinTex = null;
+function coinTexture() {   // orange coin with ₿, drawn once
+  if (coinTex) return coinTex;
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = '#f7931a'; g.beginPath(); g.arc(64, 64, 64, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#fff'; g.font = 'bold 88px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('₿', 64, 70);
+  coinTex = new THREE.CanvasTexture(c); coinTex.encoding = THREE.sRGBEncoding; return coinTex;
+}
+
+/* ================= character rig (shared by all characters, so every animation works for each) ================= */
+const paint = { skin: [], shirt: [], pants: [], shoes: [], belt: [] };   // meshes recolored by applyCharacter
 const hero = new THREE.Group();
 const body = new THREE.Group(); body.position.y = 0.47; hero.add(body);           // torso, arms and head (so they can lean)
 function leg(x) {
@@ -624,6 +745,7 @@ function leg(x) {
   const knee = new THREE.Group(); knee.position.y = -0.25; hip.add(knee);
   const low = box(0.19, 0.22, 0.21, 0x29366f); low.position.y = -0.11; knee.add(low);
   const shoe = box(0.21, 0.08, 0.3, 0x5e2f24); shoe.position.set(0, -0.2, 0.04); knee.add(shoe);
+  paint.pants.push(up, low); paint.shoes.push(shoe);
   return { hip, knee };
 }
 const legL = leg(-0.14), legR = leg(0.14);
@@ -631,6 +753,7 @@ function arm(x) {
   const sh = new THREE.Group(); sh.position.set(x, 0.45, 0); body.add(sh);
   const m = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.075, 0.42, 14), mat(0x3b5dc9)); m.castShadow = true; m.position.y = -0.21; sh.add(m);
   const hand = blob(sphere(0.085), 0.085, 0xf2c98a); hand.position.y = -0.46; sh.add(hand);
+  paint.shirt.push(m); paint.skin.push(hand);
   return sh;
 }
 const armL = arm(-0.39), armR = arm(0.39);
@@ -638,36 +761,26 @@ const torso = box(0.6, 0.5, 0.4, 0x3b5dc9); torso.position.y = 0.23; body.add(to
 const belt = box(0.62, 0.08, 0.42, 0x5e2f24); belt.position.y = 0.05; body.add(belt);
 const head = new THREE.Group(); head.position.y = 0.75; body.add(head);
 const skull = blob(sphere(0.3), 0.3, 0xf2c98a); skull.scale.set(1, 0.95, 1); head.add(skull);
-// tired face: droopy eyelids, dark circles and a limp mouth
-[-1, 1].forEach(s => {
-  const e = blob(sphere(0.04), 0.04, 0x1a1c2c); e.castShadow = false; e.position.set(s * 0.11, 0.03, 0.27); head.add(e);
-  const lid = new THREE.Mesh(new THREE.SphereGeometry(0.047, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(0xe8b878));
-  lid.position.copy(e.position); lid.rotation.set(0.45, 0, -s * 0.22); head.add(lid);                                  // half closed, drooping outward
-  const bag = blob(sphere(0.04), 0, 0x9c7480); bag.castShadow = false; bag.scale.set(1.2, 0.35, 0.4); bag.position.set(s * 0.11, -0.03, 0.272); head.add(bag);   // dark circle
-});
-const mouthM = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.011, 6, 12, Math.PI), mat(0x7a3b3b)); mouthM.scale.y = 0.45; mouthM.position.set(0.01, -0.15, 0.262); head.add(mouthM);
-// long messy hair (sits under the headset)
-const HAIR = 0x3a2618;
-const hairTop = new THREE.Mesh(new THREE.SphereGeometry(0.325, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), mat(HAIR)); hairTop.castShadow = true;
-hairTop.position.y = 0.03; hairTop.rotation.x = -0.25; hairTop.scale.set(1.06, 1, 1.06); head.add(hairTop);
-const hairBack = blob(sphere(0.3), 0, HAIR); hairBack.scale.set(1.08, 1.45, 0.7); hairBack.position.set(0, -0.2, -0.13); head.add(hairBack);   // down to the shoulders
-[-1, 1].forEach(s => { const lock = blob(sphere(0.1), 0, HAIR); lock.scale.set(0.7, 2.1, 0.9); lock.position.set(s * 0.27, -0.2, 0.06); lock.rotation.z = s * 0.12; head.add(lock); });   // side locks
-[[-0.16, 0.5], [-0.05, 0.1], [0.07, -0.3], [0.18, -0.6]].forEach(([x, rz]) => {   // bangs falling over the forehead
-  const f = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.2, 8), mat(HAIR)); f.castShadow = true;
-  f.position.set(x, 0.18, 0.25); f.rotation.set(Math.PI + 0.3, 0, rz); head.add(f);
-});
-[[-0.08, 0.6, 0.3], [0.1, -0.5, -0.4], [0, 0.1, 0.9]].forEach(([x, rx, rz]) => {   // spiky strands on top
-  const sp = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 6), mat(HAIR)); sp.castShadow = true;
-  sp.position.set(x, 0.33, rx * 0.1); sp.rotation.set(rx, 0, rz); head.add(sp);
-});
-// gaming headset with LED ear cups and mic
-const band = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.035, 8, 20, Math.PI), mat(0x1c1a24)); band.position.y = 0.02; head.add(band);
-[-1, 1].forEach(s => {
-  const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.09, 16), mat(0x1c1a24)); cup.castShadow = true; cup.rotation.z = Math.PI / 2; cup.position.set(s * 0.33, 0, 0); head.add(cup);
-  const cupLed = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.1, 16), ledMat(0.6)); cupLed.rotation.z = Math.PI / 2; cupLed.position.copy(cup.position); head.add(cupLed);
-});
-const micArm = box(0.025, 0.025, 0.24, 0x1c1a24); micArm.position.set(-0.3, -0.1, 0.14); micArm.rotation.y = -0.35; head.add(micArm);
-const micTip = blob(sphere(0.035), 0, 0x1c1a24); micTip.position.set(-0.22, -0.1, 0.26); head.add(micTip);
+paint.shirt.push(torso); paint.belt.push(belt); paint.skin.push(skull);
+
+// the chosen character's look: two groups (head, chest) rebuilt on every change
+let characterId = null, look = null;
+function applyCharacter(id) {
+  if (!CHARACTERS[id]) id = DEFAULT_CHARACTER;
+  if (id === characterId) return;
+  characterId = id;
+  const c = CHARACTERS[id];
+  for (const k in paint) paint[k].forEach(m => { m.material = mat(c.colors[k]); });
+  if (look) {
+    for (let i = leds.length - 1; i >= 0; i--) if (look.leds.includes(leds[i])) leds.splice(i, 1);   // stop cycling the old look's LEDs
+    [look.head, look.chest].forEach(g => { g.parent.remove(g); g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); });
+  }
+  const h = new THREE.Group(), ch = new THREE.Group(), before = leds.length;
+  head.add(h); body.add(ch);
+  const fx = c.build(h, ch) || {};
+  look = { head: h, chest: ch, leds: leds.slice(before), lasers: fx.lasers || [] };
+}
+applyCharacter(DEFAULT_CHARACTER);
 // handheld objects
 const bookMesh = box(0.5, 0.06, 0.36, 0xffffff); const bookCover = box(0.52, 0.03, 0.38, 0x3b5dc9); bookCover.position.y = -0.04; bookMesh.add(bookCover);
 bookMesh.position.set(0, 0.41, 0.45); bookMesh.rotation.x = -0.6; bookMesh.visible = false; body.add(bookMesh);
@@ -909,9 +1022,51 @@ addEventListener('message', e => { if (e.data && typeof e.data.mode === 'string'
 const setDlg = document.getElementById('settings'), setForm = document.getElementById('setForm'), setBack = document.getElementById('setBack');
 const PERM_KEYS = ['edit', 'bash', 'web', 'mcp'];
 let permissions = null, permDefaults = null, paused = false;
+// "Choose your character": one card per CHARACTERS entry; picking one previews it in the paused scene
+const hex = n => '#' + n.toString(16).padStart(6, '0');
+// photos: each character built on a small bust (torso, arms, head) in its own scene and rendered once, independent of the hero's pose
+function characterPhotos(size = 120) {
+  const r = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  r.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); r.setSize(size, size, false);
+  r.outputEncoding = renderer.outputEncoding; r.toneMapping = renderer.toneMapping; r.toneMappingExposure = renderer.toneMappingExposure;
+  const s = new THREE.Scene();
+  s.add(new THREE.HemisphereLight(0xfff4e6, 0x8a6a4a, 0.5));
+  const key = new THREE.DirectionalLight(0xfff1d8, 0.9); key.position.set(1.5, 2, 3); s.add(key);
+  const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 20); cam.position.set(0.8, 0.85, 2.7); cam.lookAt(0, 0.6, 0);
+  const photos = {};
+  for (const [id, c] of Object.entries(CHARACTERS)) {
+    const bust = new THREE.Group(); s.add(bust);   // same offsets as the rig's body, so build() places everything as in the scene
+    const t = box(0.6, 0.5, 0.4, c.colors.shirt); t.position.y = 0.23; bust.add(t);
+    [-0.39, 0.39].forEach(x => { const a = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.075, 0.42, 14), mat(c.colors.shirt)); a.position.set(x, 0.24, 0); bust.add(a); });
+    const hd = new THREE.Group(); hd.position.y = 0.75; bust.add(hd);
+    const sk = blob(sphere(0.3), 0.3, c.colors.skin); sk.scale.set(1, 0.95, 1); hd.add(sk);
+    const before = leds.length;
+    c.build(hd, bust);
+    leds.splice(before);   // the photo's LEDs keep their base color instead of cycling
+    r.render(s, cam); photos[id] = r.domElement.toDataURL();
+    s.remove(bust); bust.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+  }
+  r.dispose(); r.forceContextLoss();
+  return photos;
+}
+const photos = characterPhotos();
+Object.entries(CHARACTERS).forEach(([id, c]) => {
+  const l = document.createElement('label'); l.className = 'opt';
+  l.innerHTML = '<input type="radio" name="character"><span><img class="photo" alt=""><b></b><i></i></span>';
+  l.querySelector('input').value = id;
+  const img = l.querySelector('img'); img.src = photos[id]; img.style.background = `radial-gradient(circle at 50% 40%, ${hex(c.accent)}55, ${hex(c.accent)}18 70%)`;
+  l.querySelector('b').textContent = c.name; l.querySelector('i').textContent = c.blurb;
+  document.getElementById('charList').appendChild(l);
+});
+setForm.addEventListener('change', e => {
+  if (e.target.name !== 'character') return;
+  applyCharacter(e.target.value); renderer.render(scene, camera);   // the loop is paused: draw one frame to show it
+});
+const savedCharacter = () => (permissions && permissions.character) || DEFAULT_CHARACTER;
 function showSettings() {
   const first = !permissions, p = permissions || permDefaults || {};
   PERM_KEYS.forEach(k => { setForm.elements[k].checked = !!p[k]; });
+  setForm.querySelectorAll('input[name="character"]').forEach(r => { r.checked = r.value === characterId; });
   setForm.querySelectorAll('input[name="mode"]').forEach(r => { r.checked = r.value === p.mode; });
   document.getElementById('setKicker').textContent = first ? 'Before we start' : 'Paused';
   document.getElementById('setTitle').textContent = first ? 'Welcome' : 'Settings';
@@ -920,7 +1075,7 @@ function showSettings() {
   if (!setDlg.open) setDlg.showModal();
   paused = true;
 }
-function hideSettings() { if (setDlg.open) setDlg.close(); paused = false; }
+function hideSettings() { if (setDlg.open) setDlg.close(); paused = false; applyCharacter(savedCharacter()); }   // Back/Esc drop an unsaved preview
 function openSettings() {
   if (!connected || setDlg.open) return;
   history.pushState({ settings: true }, '', '/settings' + location.hash);
@@ -945,7 +1100,7 @@ addEventListener('keydown', e => {
 });
 setForm.addEventListener('submit', async e => {
   e.preventDefault();
-  const body = { mode: (setForm.querySelector('input[name="mode"]:checked') || {}).value };
+  const body = { mode: (setForm.querySelector('input[name="mode"]:checked') || {}).value, character: characterId };
   PERM_KEYS.forEach(k => { body[k] = setForm.elements[k].checked; });
   const saveEl = document.getElementById('setSave'); saveEl.disabled = true;
   try {
@@ -959,6 +1114,7 @@ setForm.addEventListener('submit', async e => {
 });
 function setPermissions(p) {
   permissions = p;
+  if (!setDlg.open) applyCharacter(savedCharacter());   // while open, keep the preview; closing applies the saved one
   document.getElementById('mcpNote').textContent = p && p.mcp ? 'The chat here can use these servers.' : 'The chat here runs without MCP; turn it on in Settings.';
 }
 addEventListener('hashchange', () => setMode(location.hash.slice(1)));
@@ -1181,6 +1337,8 @@ function tick() {
     }
   }
   if (mode !== 'waiting') legL.hip.rotation.z = legR.hip.rotation.z = 0;
+  const lasersOn = phase === 'act' && (mode === 'coding' || mode === 'done');   // Crypto Boy's laser eyes
+  look.lasers.forEach(l => { l.visible = lasersOn; l.material.opacity = 0.65 + Math.sin(tGlobal * 30) * 0.25 * anim; });
   { const d = new Date(), mn = d.getMinutes() + d.getSeconds() / 60; hand1.rotation.z = -mn / 60 * Math.PI * 2; hand2.rotation.z = -((d.getHours() % 12) + mn / 60) / 12 * Math.PI * 2; }   // real-time clock
   if (mode !== 'coding') { screenT += dt; if (screenT > 0.5) { screenT = 0; drawScreen(false); } }
 
@@ -1208,9 +1366,9 @@ function tick() {
   const wide = a < 1.2;            // tall screen (phone): pull back a bit so everything fits
   zoom += (zoomTarget - zoom) * Math.min(1, dt * 8);
   const base = new THREE.Vector3(0.6, wide ? 12.5 : 10, wide ? 15 : 12.5);
-  const look = new THREE.Vector3(0, 0.6, -0.3);
-  camPos.lerp(look.clone().add(base.sub(look).multiplyScalar(1 / zoom)), Math.min(1, dt * 6));
-  camLook.lerp(look, Math.min(1, dt * 3));
+  const camTarget = new THREE.Vector3(0, 0.6, -0.3);
+  camPos.lerp(camTarget.clone().add(base.sub(camTarget).multiplyScalar(1 / zoom)), Math.min(1, dt * 6));
+  camLook.lerp(camTarget, Math.min(1, dt * 3));
   camera.position.copy(camPos); camera.lookAt(camLook);
 
   renderer.render(scene, camera);

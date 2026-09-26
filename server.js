@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 4545;
 const HOST = '127.0.0.1';        // this machine only: the /prompt route runs Claude
 const DONE_TO_IDLE_MS = 8000;   // after "Done", go back to sleep
 const CLAUDE_CWD = process.env.CLAUDE_CWD || process.cwd();   // folder where the chat's Claude works
-const PERMS_PATH = path.join(__dirname, 'chat-permissions.json');   // chosen on the page's /settings screen (per machine, not committed)
+const PERMS_PATH = path.join(__dirname, 'chat-permissions.json');   // the page's settings (chat permissions + character), chosen on /settings (per machine, not committed)
 const HTML_PATH = path.join(__dirname, 'office.html');   // read on every GET /: edit the HTML and just reload the page
 
 const clients = new Set();
@@ -257,15 +257,19 @@ let permMode = 'normal';   // 'plan' = /plan (read and plan only); 'normal' = th
 // Groups the user turns on in /settings. Reading files is always on; the defaults match the old fixed setup.
 const PERM_GROUPS = { edit: 'Edit,Write', bash: 'Bash', web: 'WebFetch,WebSearch' };
 const PERM_MODES = ['acceptEdits', 'auto'];   // run everything checked / auto mode reviews each action, like the terminal
-const PERM_DEFAULTS = { edit: true, bash: false, web: false, mcp: false, mode: 'acceptEdits' };
+const PERM_DEFAULTS = { edit: true, bash: false, web: false, mcp: false, mode: 'acceptEdits', character: 'gamer' };
 
 // Only booleans for the groups and a known mode: anything else is rejected, never passed on to `claude`.
+// `character` is just the look of the 3D character (the page falls back to the default for unknown ids); older files without it get the default.
 function validPermissions(d) {
   if (!d || typeof d !== 'object') return null;
   const out = { version: 1 };
   for (const k of [...Object.keys(PERM_GROUPS), 'mcp']) { if (typeof d[k] !== 'boolean') return null; out[k] = d[k]; }
   if (!PERM_MODES.includes(d.mode)) return null;
   out.mode = d.mode;
+  const character = d.character === undefined ? PERM_DEFAULTS.character : d.character;
+  if (typeof character !== 'string' || !/^[a-z0-9-]{1,32}$/.test(character)) return null;
+  out.character = character;
   return out;
 }
 

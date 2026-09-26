@@ -58,7 +58,17 @@ Approval mode:
 
 The page can't show approval prompts, so anything that would need one is denied.
 
-Your choices are saved to `chat-permissions.json` next to `server.js` (per machine, git-ignored). To change them, open **⚙ Settings** (or press **P**, or go to `/settings`), change the options and **Save**. The file is written again and the next message uses the new permissions, with no restart needed. **Back**, **Esc**, **P** or the browser's back button close the screen without saving. Delete the file to see the onboarding again.
+Character: the top of the screen lets you pick who works in the room. Clicking one previews it behind the menu; **Save** keeps it.
+
+| Character | Look |
+|---|---|
+| Gamer | Tired, long messy hair, RGB headset |
+| Crypto Boy | Backwards cap, shades, gold chain with a ₿ coin; laser eyes while coding and when done |
+| Mei | Black hair with bangs and two buns, red mandarin-collar jacket with gold trim |
+
+To add one, add an entry to `CHARACTERS` in `office.html` (colors for the shared body plus a `build()` for the face, hair and accessories); it shows up in Settings automatically, with a portrait rendered from its `build()`. Changes to `server.js` need a server restart; `office.html` only needs a page reload.
+
+Your choices (permissions and character) are saved to `chat-permissions.json` next to `server.js` (per machine, git-ignored). To change them, open **⚙ Settings** (or press **P**, or go to `/settings`), change the options and **Save**. The file is written again and the next message uses the new permissions, with no restart needed. **Back**, **Esc**, **P** or the browser's back button close the screen without saving. Delete the file to see the onboarding again.
 
 ## Commands (right panel)
 
