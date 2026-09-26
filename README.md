@@ -1,52 +1,60 @@
-# Escritório 3D ↔ Claude Code
+# Claude Code UI — 3D Office
 
-1. `npm start` (ou `npm run dev`, que reinicia sozinho quando você edita `server.js`; mudanças no `office.html` aparecem só recarregando a página) e abra http://localhost:4545 (`npm run open`)
-2. Copie o bloco `hooks` de `hooks.json` para `~/.claude/settings.json` (todos os projetos) ou `.claude/settings.json` (um projeto). Se já tiver um bloco `hooks`, mescle os eventos.
-3. Abra o Claude Code e mande uma tarefa. O personagem passa a reagir aos eventos.
+A 3D office in the browser where a character acts out what Claude Code is doing, with a chat, command buttons and a usage-limit bar. The interface is in Portuguese; labels below are quoted as they appear on screen.
 
-Mapa de eventos → modos (edite `modeFor()` em `server.js`):
+1. `npm start` (or `npm run dev`, which restarts on its own when you edit `server.js`; changes to `office.html` only need a page reload) and open http://localhost:4545 (`npm run open`)
+2. Copy the `hooks` block from `hooks.json` into `~/.claude/settings.json` (all projects) or `.claude/settings.json` (one project). If you already have a `hooks` block, merge the events.
+3. Open Claude Code and give it a task. The character starts reacting to the events.
 
-| Evento do Claude Code                          | Modo        |
-|------------------------------------------------|-------------|
-| `UserPromptSubmit` em plan mode                | Planejando  |
-| `UserPromptSubmit` (normal)                    | Pensando    |
-| `PreToolUse` com Edit / Write / Bash           | Construindo |
-| `PreToolUse` com Read / Grep / Glob / Web*     | Revisando   |
-| `PreToolUse` com qualquer tool em plan mode    | Planejando  |
-| `Notification` (permissão, idle, pergunta)     | Esperando   |
-| `Stop`                                         | Concluído → Ocioso (8 s) |
-| `SessionStart` / `SessionEnd`                  | Ocioso      |
+Requires Node.js 20+.
 
-Teste sem o Claude Code: `curl -X POST localhost:4545/mode/coding`
+Event → mode map (edit `modeFor()` in `server.js`):
 
-## Barra de energia (limite de uso)
+| Claude Code event                              | Mode                      |
+|------------------------------------------------|---------------------------|
+| `UserPromptSubmit` in plan mode                | Planejando (planning)     |
+| `UserPromptSubmit` (normal)                    | Pensando (thinking)       |
+| `PreToolUse` with Edit / Write / Bash          | Construindo (building)    |
+| `PreToolUse` with Read / Grep / Glob / Web*    | Revisando (reviewing)     |
+| `PreToolUse` with any tool in plan mode        | Planejando (planning)     |
+| `Notification` (permission, idle, question)    | Esperando (waiting)       |
+| `Stop`                                         | Concluído (done) → Ocioso (idle) after 8 s |
+| `SessionStart` / `SessionEnd`                  | Ocioso (idle)             |
 
-Ao lado do card do modo, a barra mostra quanto **sobra** do limite de uso de 5 h (100% = cheia, esvazia conforme você usa; verde → amarelo → vermelho, pisca abaixo de 10%).
+Test without Claude Code: `curl -X POST localhost:4545/mode/coding`
 
-- O servidor busca os mesmos números do `/usage` direto na sua conta, usando o login que o Claude Code guardou (Keychain no macOS, `~/.claude/.credentials.json` no Linux). Isso acontece quando o servidor inicia, quando uma mensagem ou comando do chat termina e quando chega um hook `Stop` do terminal. O resultado aparece no log do servidor. Esse endpoint (`/api/oauth/usage`) não é documentado. Se parar de funcionar, a barra continua vindo da status line (abaixo).
-- Os dados também vêm da status line do Claude Code: copie também o `statusLine` de `hooks.json` para o `settings.json`. O Claude Code manda o JSON da sessão (com `rate_limits.five_hour`) para `POST /usage`, e a resposta vira o texto da status line (`⚡ 58% de energia`). Isso substitui uma status line que você já tenha.
-- O `rate_limits` só aparece para assinantes Claude.ai (Pro/Max) e depois da primeira resposta da sessão; antes disso a barra fica em "sem dados".
-- Teste: `curl -X POST -H 'Content-Type: application/json' -d '{"used":42}' localhost:4545/usage` ou `setUsage(42)` no console.
+## Energy bar (usage limit)
 
-## Chat na página
+Next to the mode card, the bar shows how much of the 5-hour usage limit is **left** (100% = full, it drains as you use it; green → yellow → red, blinks below 10%).
 
-Com o servidor rodando, o painel **Falar com o Claude** manda a mensagem para `POST /prompt`, e o servidor roda `claude -p` na pasta onde você iniciou o `node server.js` (ou em `CLAUDE_CWD=/outra/pasta node server.js`). A resposta aparece na página e o personagem se mexe conforme as ferramentas usadas.
+- The server fetches the same numbers as `/usage` straight from your account, using the login Claude Code stored (Keychain on macOS, `~/.claude/.credentials.json` on Linux). This happens when the server starts, when a chat message or command finishes, and when a `Stop` hook arrives from the terminal. The result shows up in the server log. This endpoint (`/api/oauth/usage`) is undocumented. If it stops working, the bar keeps getting data from the status line (below).
+- Data also comes from the Claude Code status line: also copy `statusLine` from `hooks.json` into `settings.json`. Claude Code sends the session JSON (with `rate_limits.five_hour`) to `POST /usage`, and the response becomes the status line text (`⚡ 58% de energia`). This replaces any status line you already have.
+- `rate_limits` only appears for Claude.ai subscribers (Pro/Max) and after the session's first response; until then the bar shows "sem dados" (no data).
+- Test: `curl -X POST -H 'Content-Type: application/json' -d '{"used":42}' localhost:4545/usage` or `setUsage(42)` in the browser console.
 
-- Ferramentas liberadas: só `Read`, `Grep`, `Glob`, `Edit` e `Write` (sem Bash, web ou MCP). Edite `CHAT_TOOLS` em `server.js`.
-- A conversa continua entre mensagens (`--resume`). **Nova conversa** começa do zero; **Parar** interrompe.
-- O servidor só escuta em `127.0.0.1` e recusa pedidos de outros sites.
+## Chat on the page
 
-## Comandos (painel da direita)
+With the server running, the **Falar com o Claude** (talk to Claude) panel sends your message to `POST /prompt`, and the server runs `claude -p` in the folder where you started `node server.js` (or in `CLAUDE_CWD=/other/folder node server.js`). The reply shows up on the page and the character moves according to the tools being used.
 
-Os botões equivalem aos comandos do Claude Code, e também dá pra digitar no chat:
+- Allowed tools: only `Read`, `Grep`, `Glob`, `Edit` and `Write` (no Bash, web or MCP). Edit `CHAT_TOOLS` in `server.js`.
+- The conversation carries over between messages (`--resume`). **Nova conversa** (new conversation) starts from scratch; **Parar** (stop) interrupts.
+- The server only listens on `127.0.0.1` and rejects requests from other sites.
 
-| Botão | Comando | O que faz |
+## Commands (right panel)
+
+The buttons match Claude Code commands, and you can also type them in the chat:
+
+| Button | Command | What it does |
 |---|---|---|
-| Planejar | `/plan` | Próximas mensagens rodam em `--permission-mode plan`: só lê e monta um plano |
-| Executar | `⇧Tab` | Volta ao normal (`acceptEdits`): lê e edita arquivos |
-| Resumir | `/compact` | Compacta a conversa |
-| Contexto | `/context` | Mostra quanto da memória já foi usado |
-| Criar CLAUDE.md | `/init` | Documenta o projeto |
-| Nova conversa | `/clear` | Começa do zero |
+| Planejar (plan) | `/plan` | Next messages run with `--permission-mode plan`: read-only, builds a plan |
+| Executar (execute) | `⇧Tab` | Back to normal (`acceptEdits`): reads and edits files |
+| Resumir (summarize) | `/compact` | Compacts the conversation |
+| Contexto (context) | `/context` | Shows how much of the context window is used |
+| Criar CLAUDE.md (create CLAUDE.md) | `/init` | Documents the project |
+| Nova conversa (new conversation) | `/clear` | Starts from scratch |
 
-`Esc` no chat interrompe. O que o Claude está fazendo aparece no balão do personagem.
+`Esc` in the chat interrupts. What Claude is doing appears in the character's speech bubble.
+
+## Skills panel
+
+One button per skill in the project's `.claude/skills/` folder (the folder the chat works in); clicking it runs `/skill-name` in the chat. Global skills from `~/.claude/skills` are not listed. Skills are read on each page load, so after creating one, just reload.
