@@ -1,0 +1,12 @@
+{
+  "statusLine": { "type": "command", "command": "curl -s -m 1 -X POST -H 'Content-Type: application/json' --data-binary @- http://localhost:4545/usage 2>/dev/null || true" },
+  "hooks": {
+    "SessionStart":     [{ "hooks": [{ "type": "command", "async": true, "command": "curl -s -m 1 -X POST -H 'Content-Type: application/json' --data-binary @- http://localhost:4545/hook >/dev/null 2>&1 || true" }] }],
+    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "async": true, "command": "curl -s -m 1 -X POST -H 'Content-Type: application/json' --data-binary @- http://localhost:4545/hook >/dev/null 2>&1 || true" }] }],
+    "PreToolUse":       [{ "matcher": "*", "hooks": [{ "type": "command", "async": true, "command": "curl -s -m 1 -X POST -H 'Content-Type: application/json' --data-binary @- http://localhost:4545/hook >/dev/null 2>&1 || true" }] }],
+    "Notification":     [{ "hooks": [{ "type": "command", "async": true, "command": "curl -s -m 1 -X POST -H 'Content-Type: application/json' --data-binary @- http://localhost:4545/hook >/dev/null 2>&1 || true" }] }],
+    "SubagentStart":    [{ "hooks": [{ "type": "command", "async": true, "command": "curl -s -m 1 -X POST -H 'Content-Type: application/json' --data-binary @- http://localhost:4545/hook >/dev/null 2>&1 || true" }] }],
+    "Stop":             [{ "hooks": [{ "type": "command", "async": true, "command": "curl -s -m 1 -X POST -H 'Content-Type: application/json' --data-binary @- http://localhost:4545/hook >/dev/null 2>&1 || true" }] }],
+    "SessionEnd":       [{ "hooks": [{ "type": "command", "async": true, "command": "curl -s -m 1 -X POST -H 'Content-Type: application/json' --data-binary @- http://localhost:4545/hook >/dev/null 2>&1 || true" }] }]
+  }
+}

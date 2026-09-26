@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Escritório 3D — o personagem faz o que o Claude faz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    --ink: #1a1c2c; --muted: #566c86;
+    --page: #dfe7ee; --page-ink: #1a1c2c; --panel: #ffffff; --accent: #ffcd75; --accent-dark: #ef7d57; --shadow: 0 10px 30px rgba(20,30,50,.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --page: #141a24; --page-ink: #e8eef4; --panel: #1f2736; --ink: #e8eef4; --muted: #9fb0c4; --shadow: 0 10px 30px rgba(0,0,0,.45); }
+  }
+  :root[data-theme="dark"] { --page: #141a24; --page-ink: #e8eef4; --panel: #1f2736; --ink: #e8eef4; --muted: #9fb0c4; --shadow: 0 10px 30px rgba(0,0,0,.45); }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  *, *::before, *::after { box-sizing: inherit; }
+  body { margin: 0; background: var(--page); color: var(--page-ink); font-family: "Nunito", "Segoe UI", system-ui, sans-serif; font-size: 16px; line-height: 1.5; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+  @media (max-width: 860px) { .wrap { grid-template-columns: minmax(0, 1fr); padding: 12px; } }
+
+  .game { position: relative; height: min(78vh, 680px); min-height: 360px; border-radius: 18px; background: #000; overflow: hidden; box-shadow: var(--shadow); }
+  @media (max-width: 860px) { .game { height: 60vh; } }
+  .game canvas { display: block; width: 100%; height: 100%; }
+  .hud { position: absolute; left: 12px; top: 12px; right: 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; pointer-events: none; }
+  .tag { background: rgba(255,255,255,.88); color: #1a1c2c; backdrop-filter: blur(8px); border-radius: 12px; padding: 8px 14px; font-weight: 800; font-size: 18px; box-shadow: 0 4px 16px rgba(0,0,0,.18); }
+  .zoom { display: flex; gap: 0; pointer-events: auto; border-radius: 12px; overflow: hidden; }
+  .zbtn { font: inherit; font-weight: 800; font-size: 20px; width: 40px; height: 40px; color: #1a1c2c; background: rgba(255,255,255,.88); backdrop-filter: blur(8px); border: 0; border-left: 1px solid rgba(0,0,0,.12); cursor: pointer; padding: 0; line-height: 1; }
+  .zbtn:first-child { border-left: 0; }
+  .zbtn.zval { width: auto; padding: 0 8px; font-size: 15px; font-weight: 400; }
+  .zbtn:active { background: var(--accent); }
+  .zbtn:focus-visible { outline: 3px dashed #b13e53; outline-offset: 2px; }
+  .zoom { box-shadow: 0 4px 16px rgba(0,0,0,.18); }
+  .tag small { display: block; font-weight: 400; font-size: 14px; color: #566c86; }
+  /* barra de energia = quanto sobra do limite de uso */
+  .hud-left { display: flex; gap: 10px; align-items: stretch; min-width: 0; }
+  .energy { display: flex; flex-direction: column; justify-content: center; gap: 5px; width: 190px; min-width: 120px; font-size: 14px; }
+  .energy-top { display: flex; justify-content: space-between; gap: 8px; line-height: 1; }
+  .energy-top b { font-weight: 800; font-variant-numeric: tabular-nums; }
+  .energy-bar { position: relative; height: 16px; border: 2px solid #1a1c2c; border-radius: 6px; background: #333c57; overflow: hidden; }
+  .energy-fill { position: absolute; inset: 0 auto 0 0; width: 0; background: #38b764; transition: width .6s ease, background-color .6s; }
+  .energy-fill::after { content: ""; position: absolute; left: 0; right: 0; top: 2px; height: 3px; background: rgba(255,255,255,.35); border-radius: 2px; }
+  .energy-bar::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), #1a1c2c calc(10% - 2px) 10%); }
+  .energy.low .energy-fill { animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: .45; } }
+  @media (prefers-reduced-motion: reduce) { .energy.low .energy-fill { animation: none; } .energy-fill { transition: none; } }
+  .energy small { font-size: 12px; line-height: 1; }
+  @media (max-width: 520px) { .energy { width: 130px; } .energy small { display: none; } }
+  .bubble { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); background: #fff; color: #1a1c2c; border-radius: 12px; padding: 6px 12px; font-size: 15px; font-weight: 600; white-space: nowrap; pointer-events: none; display: none; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
+  .bubble::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 12px; height: 12px; background: #fff; transform: translateX(-50%) rotate(45deg); }
+  .bubble.show { display: block; }
+
+  aside { display: grid; gap: 18px; }
+  .panel { background: var(--panel); color: var(--ink); border-radius: 16px; box-shadow: var(--shadow); padding: 18px; }
+  .panel h2 { margin: 0 0 12px; font-size: 19px; font-weight: 800; line-height: 1.2; }
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .modes .btn { padding: 6px 9px; font-size: 14px; }
+  .btn { font: inherit; font-weight: 700; font-size: 15px; color: var(--ink); background: transparent; border: 1.5px solid rgba(128,140,160,.35); border-radius: 12px; padding: 8px 10px; cursor: pointer; text-align: left; line-height: 1.25; transition: background .15s, border-color .15s; }
+  .btn:hover { border-color: var(--accent-dark); }
+  .btn:active, .btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #1a1c2c; }
+  .btn[aria-pressed="true"] i { color: #6b5a30; }
+  .btn:focus-visible { outline: 3px dashed #b13e53; outline-offset: 3px; }
+  .btn i { display: block; font-style: normal; font-weight: 400; font-size: 13px; color: var(--muted); }
+  .cmds[hidden] { display: none; }
+  .btn kbd { display: block; width: fit-content; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; font-weight: 600; padding: 0 5px; margin-bottom: 3px; border-radius: 5px; background: rgba(128,140,160,.18); color: var(--ink); }
+  .btn[aria-pressed="true"] kbd { background: rgba(26,28,44,.12); color: #1a1c2c; }
+  .cmds .note { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+  .cmds code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; color: var(--ink); background: rgba(128,140,160,.18); padding: 1px 5px; border-radius: 5px; }
+  .cmds .note[hidden], .modes:empty { display: none; }
+  .modes:empty + .note { margin-top: 0; }
+  #skillList .btn span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* animação + chat cabem na altura da janela: a cena encolhe, o chat fica sempre visível */
+  .main { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 14px; min-width: 0; height: calc(100vh - 48px); height: calc(100dvh - 48px); min-height: 520px; }
+  .main .game { height: auto; min-height: 260px; }
+  @media (max-width: 860px) { .main { height: calc(100vh - 24px); height: calc(100dvh - 24px); min-height: 460px; } .main .game { min-height: 200px; } }
+  .chat[hidden] { display: none; }
+  .log { height: min(200px, 24vh); overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; font-size: 15px; }
+  .msg { border-radius: 12px; padding: 7px 11px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.4; }
+  .msg.me { align-self: flex-end; max-width: 90%; background: var(--accent); color: #1a1c2c; }
+  .msg.ai { background: rgba(128,140,160,.14); }
+  .msg.err { background: rgba(177,62,83,.14); color: #b13e53; }
+  .msg.note { background: rgba(128,140,160,.08); border: 1px dashed rgba(128,140,160,.4); font-size: 14px; }
+  .chat form { display: grid; gap: 8px; }
+  .chat { padding: 14px; }
+  .chat h2 { margin-bottom: 8px; font-size: 17px; }
+  .chat form { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+  @media (max-width: 520px) { .chat form { grid-template-columns: minmax(0, 1fr); } }
+  .chat textarea { font: inherit; font-size: 15px; color: var(--ink); background: transparent; border: 1.5px solid rgba(128,140,160,.35); border-radius: 12px; padding: 8px 10px; resize: none; height: 42px; max-height: 120px; }
+  .chat textarea { transition: border-color .15s, box-shadow .15s; }
+  .chat textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,205,117,.35); }
+  .row { display: flex; gap: 8px; justify-content: flex-end; }
+  .row .btn { text-align: center; padding: 0 16px; height: 42px; }
+  @media (max-width: 520px) { .row .btn { flex: 1; padding: 0 10px; } }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #1a1c2c; }
+  .row .btn.mic { width: 42px; padding: 0; display: grid; place-items: center; flex: none; }
+  .btn.mic[hidden] { display: none; }
+  .btn.mic svg { width: 20px; height: 20px; }
+  .btn.mic[aria-pressed="true"] { background: #b13e53; border-color: #b13e53; color: #fff; animation: micPulse 1.2s ease-in-out infinite; }
+  @keyframes micPulse { 50% { box-shadow: 0 0 0 6px rgba(177,62,83,.25); } }
+  @media (prefers-reduced-motion: reduce) { .btn.mic[aria-pressed="true"] { animation: none; } }
+  .btn:disabled { opacity: .45; cursor: default; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="main">
+    <div class="game" id="game">
+      <div class="hud">
+        <div class="hud-left">
+          <div class="tag energy" id="energy" role="meter" aria-label="Limite de uso restante (5 h)" aria-valuemin="0" aria-valuemax="100">
+            <div class="energy-top"><span>Token Usage</span><b id="energyVal">—</b></div>
+            <div class="energy-bar"><div class="energy-fill" id="energyFill"></div></div>
+            <small id="energySub">sem dados do limite</small>
+          </div>
+        </div>
+        <div class="zoom" role="group" aria-label="Zoom">
+          <button class="zbtn" id="zoomOut" aria-label="Afastar">−</button>
+          <button class="zbtn zval" id="zoomReset" aria-label="Zoom mínimo"><span id="zoomVal">0%</span></button>
+          <button class="zbtn" id="zoomIn" aria-label="Aproximar">+</button>
+        </div>
+      </div>
+      <div class="bubble" id="bubble"></div>
+    </div>
+    <section class="panel chat" id="chat" hidden>
+      <h2>Falar com o Claude</h2>
+      <div class="log" id="chatLog" aria-live="polite"></div>
+      <form id="chatForm">
+        <textarea id="chatInput" rows="1" placeholder="Ex.: leia o server.js e explique a rota /hook" aria-label="Mensagem para o Claude"></textarea>
+        <div class="row">
+          <button class="btn mic" id="chatMic" type="button" aria-label="Ditar por voz" aria-pressed="false" title="Ditar por voz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4M8 22h8"/></svg></button>
+          <button class="btn primary" id="chatSend" type="submit">Enviar</button>
+          <button class="btn" id="chatStop" type="button" disabled>Parar</button>
+        </div>
+      </form>
+    </section>
+  </div>
+  <aside>
+    <section class="panel cmds" id="cmds" hidden>
+      <h2>Comandos</h2>
+      <div class="modes" id="modes"></div>
+      <p class="note">Também dá pra digitar no chat: <code>/plan</code>, <code>/compact</code>… <kbd>⇧Tab</kbd> alterna planejar/executar e <kbd>Esc</kbd> para.</p>
+    </section>
+    <section class="panel cmds" id="skills" hidden>
+      <h2>Skills</h2>
+      <div class="modes" id="skillList"></div>
+      <p class="note" id="skillEmpty" hidden>Nenhuma skill criada ainda.</p>
+    </section>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ================= modos ================= */
+const MODES = {
+  idle:     { label: 'Aguardando',       sub: '', bubble: 'zzz…' },
+  planning: { label: 'Planejando',   sub: '...',  bubble: 'hmm… primeiro isso, depois aquilo' },
+  coding:   { label: 'Programando',  sub: '...',  bubble: 'tac tac tac tac' },
+  review:   { label: 'Revisando',    sub: '...',    bubble: 'aqui tem um bug…' },
+  thinking: { label: 'Pensando',     sub: '...', bubble: 'e se…?' },
+  waiting:  { label: 'Esperando você', sub: '',   bubble: 'e aí, o que acha?' },
+  done:     { label: 'Concluído',    sub: '!', bubble: 'pronto!' },
+};
+const gameEl = document.getElementById('game');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (!window.THREE) { const t = document.createElement('div'); t.className = 'tag'; t.textContent = 'Não foi possível carregar o Three.js. Recarregue a página.'; document.querySelector('.hud-left').prepend(t); }
+
+/* ================= renderer / câmera ================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.domElement.setAttribute('aria-label', 'Quarto gamer 3D com o personagem trabalhando');
+gameEl.insertBefore(renderer.domElement, gameEl.firstChild);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xe9dfd3, 30, 60);
+const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 80);
+const SCALE = 1;
+function resize() {
+  const w = gameEl.clientWidth, h = gameEl.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(gameEl);
+
+/* ================= materiais estilo cartoon ================= */
+const matCache = {};
+const mat = c => matCache[c] || (matCache[c] = new THREE.MeshStandardMaterial({ color: c, roughness: 0.82, metalness: 0.02 }));
+const surf = (map) => new THREE.MeshStandardMaterial({ map, roughness: 0.9, metalness: 0 });
+function box(w, h, d, color) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color));
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+function blob(geo, r, color) {
+  const m = new THREE.Mesh(geo, mat(color)); m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+const sphere = (r) => new THREE.SphereGeometry(r, 20, 14);
+// LEDs RGB: cada pedaço tem uma fase, e o tick faz a cor correr (ver "RGB" no loop)
+const leds = [];
+function ledMat(ph) { const m = new THREE.MeshBasicMaterial({ color: 0xff3df2, toneMapped: false }); leds.push({ m, ph }); return m; }
+function ledLine(len, ph0, span, thick = 0.04) {
+  const g = new THREE.Group(), n = Math.max(1, Math.round(len / 0.5)), sw = len / n;
+  for (let i = 0; i < n; i++) { const s = new THREE.Mesh(new THREE.BoxGeometry(sw, thick, 0.03), ledMat(ph0 + span * i / n)); s.position.x = -len / 2 + sw * (i + 0.5); g.add(s); }
+  return g;
+}
+let seed = 11;
+const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+function pixelTexture(cv, rx, ry) {
+  const t = new THREE.CanvasTexture(cv);
+  t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry);
+  return t;
+}
+// papel de parede: listras suaves com bolinhas
+function wallpaperCanvas(base, stripe, dot) {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d'); g.fillStyle = base; g.fillRect(0, 0, 128, 128);
+  g.fillStyle = stripe; for (let x = 0; x < 128; x += 32) g.fillRect(x, 0, 12, 128);
+  g.fillStyle = dot; for (let y = 8; y < 128; y += 32) for (let x = 22; x < 128; x += 32) { g.beginPath(); g.arc(x, y, 2.2, 0, Math.PI * 2); g.fill(); g.beginPath(); g.arc(x, y + 16, 2.2, 0, Math.PI * 2); g.fill(); }
+  return c;
+}
+// madeira: tábuas com veios
+function woodCanvas(base, dark, light) {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d'); g.fillStyle = base; g.fillRect(0, 0, 128, 128);
+  for (let y = 0; y < 128; y += 32) {
+    g.fillStyle = dark; g.fillRect(0, y, 128, 2);
+    for (let i = 0; i < 12; i++) { g.strokeStyle = i % 2 ? dark : light; g.globalAlpha = 0.25 + rnd() * 0.3; g.lineWidth = 0.8 + rnd(); g.beginPath();
+      const yy = y + 4 + rnd() * 26; g.moveTo(0, yy); g.bezierCurveTo(40, yy + rnd() * 4 - 2, 88, yy - rnd() * 4 + 2, 128, yy); g.stroke(); }
+    g.globalAlpha = 1;
+  }
+  return c;
+}
+
+/* ================= o quarto ================= */
+// três paredes (fundo, esquerda, direita) e o chão; a frente fica aberta pra câmera, como uma casa de bonecas
+const ROOM = { x0: -5.8, x1: 5.8, z0: -4.5, z1: 4.0, h: 3.2 };
+const FLOOR = 0.16;
+const roomW = ROOM.x1 - ROOM.x0, roomD = ROOM.z1 - ROOM.z0, roomCz = (ROOM.z0 + ROOM.z1) / 2;
+const floor = new THREE.Mesh(new THREE.BoxGeometry(roomW, 0.16, roomD),
+  surf(pixelTexture(woodCanvas('#4a4058', '#342c42', '#5c5270'), 4, 3)));
+floor.position.set(0, 0.08, roomCz); floor.receiveShadow = true; scene.add(floor);
+const floorEdge = box(roomW + 0.3, 0.3, roomD + 0.15, 0x15121f); floorEdge.position.set(0, -0.14, roomCz - 0.075); floorEdge.castShadow = false; scene.add(floorEdge);
+
+const wallTex = pixelTexture(wallpaperCanvas('#2b2540', '#302a48', '#3d3460'), 1, 1);
+function wall(w, x, z, yaw, ph0) {
+  const t = wallTex.clone(); t.needsUpdate = true; t.repeat.set(w / 1.6, ROOM.h / 1.6);
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, ROOM.h, 0.2), surf(t));
+  m.position.set(x, FLOOR + ROOM.h / 2, z); m.rotation.y = yaw; m.receiveShadow = true; scene.add(m);
+  const base = box(w, 0.18, 0.06, 0x15121f); base.castShadow = false; base.position.set(0, -ROOM.h / 2 + 0.09, 0.13); m.add(base);   // rodapé
+  const top = box(w + 0.2, 0.12, 0.3, 0x15121f); top.castShadow = false; top.position.set(0, ROOM.h / 2 + 0.06, 0); m.add(top);       // acabamento de cima
+  const strip = ledLine(w - 0.2, ph0, 1 / 3); strip.position.set(0, ROOM.h / 2 - 0.1, 0.12); m.add(strip);                             // fita de LED no teto
+  return m;
+}
+// as fitas emendam: esquerda (frente → fundo), fundo (esq → dir), direita (fundo → frente)
+const leftWall = wall(roomD, ROOM.x0 - 0.1, roomCz, Math.PI / 2, 0);
+const backWall = wall(roomW + 0.2, 0, ROOM.z0 - 0.1, 0, 1 / 3);
+const rightWall = wall(roomD, ROOM.x1 + 0.1, roomCz, -Math.PI / 2, 2 / 3);
+const WALL_Z = ROOM.z0 + 0.02;   // face interna da parede do fundo
+
+// janela no meio da parede do fundo (céu de dia, estrelas à noite)
+const skyCv = document.createElement('canvas'); skyCv.width = 128; skyCv.height = 96;
+const skyG = skyCv.getContext('2d');
+const skyTex = new THREE.CanvasTexture(skyCv); skyTex.encoding = THREE.sRGBEncoding;
+function drawSky(dark) {
+  const gr = skyG.createLinearGradient(0, 0, 0, 96);
+  gr.addColorStop(0, dark ? '#0d1330' : '#6fb8f0'); gr.addColorStop(1, dark ? '#2a2f5e' : '#c8e8ff');
+  skyG.fillStyle = gr; skyG.fillRect(0, 0, 128, 96);
+  if (dark) { skyG.fillStyle = '#fff'; for (let k = 0; k < 40; k++) skyG.fillRect((k * 37) % 128, (k * 53) % 70, 1.5, 1.5); skyG.beginPath(); skyG.arc(96, 22, 9, 0, Math.PI * 2); skyG.fillStyle = '#f4f0d0'; skyG.fill(); }
+  else { skyG.fillStyle = 'rgba(255,255,255,.9)'; [[30, 30], [84, 52]].forEach(([x, y]) => { skyG.beginPath(); skyG.arc(x, y, 10, 0, 7); skyG.arc(x + 12, y - 4, 12, 0, 7); skyG.arc(x + 25, y, 9, 0, 7); skyG.fill(); }); }
+  skyTex.needsUpdate = true;
+}
+const win = new THREE.Group(); win.position.set(0, FLOOR + 1.85, WALL_Z); scene.add(win);
+const glass = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 1.4), new THREE.MeshBasicMaterial({ map: skyTex, toneMapped: false })); glass.position.z = 0.01; win.add(glass);
+[[0, 0.74, 2.24, 0.12], [0, -0.74, 2.24, 0.12], [-1.06, 0, 0.12, 1.6], [1.06, 0, 0.12, 1.6], [0, 0, 0.07, 1.4], [0, 0, 2.0, 0.07]].forEach(([x, y, w, h]) => {
+  const f = box(w, h, 0.1, 0x2a2436); f.castShadow = false; f.position.set(x, y, 0.05); win.add(f);
+});
+const sill = box(2.4, 0.08, 0.28, 0x2a2436); sill.position.set(0, -0.82, 0.14); win.add(sill);
+const cactusPot = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.16, 12), mat(0xc9956a)); cactusPot.position.set(0.7, -0.7, 0.14); win.add(cactusPot);
+const cactus = blob(new THREE.CylinderGeometry(0.06, 0.06, 0.26, 10), 0, 0x38b764); cactus.position.set(0.7, -0.5, 0.14); win.add(cactus);
+[-1, 1].forEach(a => { const c = box(0.5, 1.75, 0.06, 0x3a2a5c); c.castShadow = false; c.position.set(a * 1.35, 0.05, 0.12); win.add(c); });   // cortinas
+const rod = box(3.2, 0.05, 0.05, 0x15121f); rod.position.set(0, 0.95, 0.14); win.add(rod);
+
+// letreiro neon em cima do computador e relógio
+const DESK = { x: 3.4, z: -2.4 };
+const neonCv = document.createElement('canvas'); neonCv.width = 256; neonCv.height = 160;
+const neonTex = new THREE.CanvasTexture(neonCv); neonTex.encoding = THREE.sRGBEncoding;
+function drawNeon() {
+  const g = neonCv.getContext('2d'); g.clearRect(0, 0, 256, 160);
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.shadowBlur = 16;
+  for (let k = 0; k < 2; k++) {   // duas passadas = brilho mais forte
+    g.shadowColor = '#ff3df2'; g.fillStyle = '#ffd6fb'; g.font = '800 92px Nunito, sans-serif'; g.fillText('GG', 128, 66);
+    g.shadowColor = '#3df2ff'; g.fillStyle = '#d6fbff'; g.font = '800 26px Nunito, sans-serif'; g.fillText('PLAYER ONE', 128, 132);
+  }
+  neonTex.needsUpdate = true;
+}
+drawNeon(); if (document.fonts) document.fonts.ready.then(drawNeon);
+const neonPlate = box(1.3, 0.8, 0.03, 0x15121f); neonPlate.castShadow = false; neonPlate.position.set(DESK.x, FLOOR + 2.5, WALL_Z + 0.02); scene.add(neonPlate);
+const neonFace = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.8), new THREE.MeshBasicMaterial({ map: neonTex, transparent: true, toneMapped: false }));
+neonFace.position.z = 0.02; neonPlate.add(neonFace);
+const neonLight = new THREE.PointLight(0xff3df2, 0.8, 4, 2); neonLight.position.set(DESK.x, FLOOR + 2.4, WALL_Z + 0.6); scene.add(neonLight);
+const wallClock = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.06, 28), mat(0x15121f)); wallClock.rotation.x = Math.PI / 2; wallClock.position.set(2.05, FLOOR + 2.55, WALL_Z + 0.04); scene.add(wallClock);
+const clockRim = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.035, 8, 28), ledMat(0.5)); clockRim.position.copy(wallClock.position); scene.add(clockRim);
+const hand1 = box(0.03, 0.18, 0.02, 0xf4f4f4); hand1.castShadow = false; hand1.geometry.translate(0, 0.09, 0); hand1.position.set(2.05, FLOOR + 2.55, WALL_Z + 0.08); scene.add(hand1);
+const hand2 = box(0.03, 0.12, 0.02, 0xf4f4f4); hand2.castShadow = false; hand2.geometry.translate(0, 0.06, 0); hand2.position.copy(hand1.position); scene.add(hand2);
+
+// quadros de pixel art na parede da esquerda, acima da cama
+function spriteTexture(rows, fg, bg) {
+  const px = 8, c = document.createElement('canvas'); c.width = 16 * px; c.height = 12 * px;
+  const g = c.getContext('2d'); g.fillStyle = bg; g.fillRect(0, 0, c.width, c.height); g.fillStyle = fg;
+  const ox = Math.floor((16 - rows[0].length) / 2), oy = Math.floor((12 - rows.length) / 2);
+  rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch === 'X') g.fillRect((x + ox) * px, (y + oy) * px, px, px); }));
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.magFilter = THREE.NearestFilter; return t;
+}
+const INVADER = ['..X.....X..', '...X...X...', '..XXXXXXX..', '.XX.XXX.XX.', 'XXXXXXXXXXX', 'X.XXXXXXX.X', 'X.X.....X.X', '...XX.XX...'];
+const HEART = ['.XX.XX.', 'XXXXXXX', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...'];
+[[INVADER, '#a7f070', 1.9], [HEART, '#ff4d6d', 3.0]].forEach(([rows, fg, z]) => {
+  const fr = box(0.04, 0.6, 0.75, 0x15121f); fr.castShadow = false; fr.position.set(ROOM.x0 + 0.03, FLOOR + 2.1, z); scene.add(fr);
+  const pic = new THREE.Mesh(new THREE.PlaneGeometry(0.63, 0.48), new THREE.MeshBasicMaterial({ map: spriteTexture(rows, fg, '#120f1c'), toneMapped: false }));
+  pic.rotation.y = Math.PI / 2; pic.position.x = 0.025; fr.add(pic);
+});
+
+// tubo de LED ao lado da cama (a cor muda no loop)
+const lamp = new THREE.Group(); lamp.position.set(-5.25, FLOOR, 0.9); scene.add(lamp);
+const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.06, 16), mat(0x15121f)); lampBase.position.y = 0.03; lamp.add(lampBase);
+const lampShade = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 1.5, 12), new THREE.MeshStandardMaterial({ color: 0x222222, emissive: 0xff3df2, emissiveIntensity: 1 }));
+lampShade.position.y = 0.81; lamp.add(lampShade);
+const lampCap = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.06, 12), mat(0x15121f)); lampCap.position.y = 1.59; lamp.add(lampCap);
+const lampLight = new THREE.PointLight(0xff3df2, 0.6, 6, 2); lampLight.position.set(-5.1, FLOOR + 1.2, 0.9); scene.add(lampLight);
+
+// espuma acústica na parede da direita, em xadrez (ranhuras alternando em pé/deitadas)
+for (let r = 0; r < 3; r++) for (let c = 0; c < 6; c++) {
+  const alt = (r + c) % 2;
+  const p = box(0.06, 0.42, 0.42, alt ? 0x2a2436 : 0x5a3596); p.castShadow = false;
+  p.position.set(ROOM.x1 - 0.03, FLOOR + 1.45 + r * 0.46, -3.6 + c * 0.46); scene.add(p);
+  [-0.13, 0, 0.13].forEach(o => { const rg = box(0.04, alt ? 0.06 : 0.42, alt ? 0.42 : 0.06, alt ? 0x2a2436 : 0x5a3596); rg.castShadow = false; rg.position.set(-0.04, alt ? o : 0, alt ? 0 : o); p.add(rg); });
+}
+
+// ---- setup gamer (construindo) ----
+function table(x, z, w, d, color, legColor = 0x15121f) {
+  const g = new THREE.Group();
+  const top = box(w, 0.12, d, color); top.position.y = 0.78; g.add(top);
+  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => { const l = box(0.12, 0.72, 0.12, legColor); l.position.set(a * (w / 2 - 0.12), 0.36, b * (d / 2 - 0.12)); g.add(l); });
+  g.position.set(x, FLOOR, z); scene.add(g); return g;
+}
+const desk = table(DESK.x, DESK.z - 0.6, 2.2, 1.0, 0x1c1a24);
+const deskGlow = ledLine(2.1, 0, 0.5); deskGlow.position.set(0, 0.7, 0.47); desk.add(deskGlow);   // luz embaixo do tampo
+const screenCv = document.createElement('canvas'); screenCv.width = 56; screenCv.height = 36;
+const screenG = screenCv.getContext('2d');
+screenCv.width = 224; screenCv.height = 144; screenG.scale(4, 4);
+const screenTex = new THREE.CanvasTexture(screenCv); screenTex.encoding = THREE.sRGBEncoding;
+const monitor = box(1.3, 0.85, 0.12, 0x15121f); monitor.position.set(0, 0.84 + 0.5, -0.25); desk.add(monitor);
+const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.15, 0.7), new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: false }));
+screen.position.set(0, 0, 0.065); monitor.add(screen);
+const stand = box(0.14, 0.32, 0.14, 0x15121f); stand.position.set(0, 0.84 + 0.16, -0.25); desk.add(stand);
+const mousepad = box(1.6, 0.008, 0.55, 0x15121f); mousepad.position.set(0.1, 0.843, 0.16); desk.add(mousepad);
+const padRim = new THREE.Mesh(new THREE.BoxGeometry(1.64, 0.006, 0.59), ledMat(0.2)); padRim.position.set(0.1, 0.842, 0.16); desk.add(padRim);
+const keyboard = box(0.7, 0.05, 0.25, 0x1c1a24); keyboard.position.set(0, 0.875, 0.18); desk.add(keyboard);
+const kbGlow = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.03, 0.27), ledMat(0.35)); kbGlow.position.set(0, 0.865, 0.18); desk.add(kbGlow);
+const mouse = box(0.12, 0.05, 0.18, 0x1c1a24); mouse.position.set(0.55, 0.875, 0.18); desk.add(mouse);
+const mouseLed = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.052, 0.06), ledMat(0.6)); mouseLed.position.z = -0.03; mouse.add(mouseLed);
+// controle e latinha de energético
+const gamepad = new THREE.Group(); gamepad.position.set(-0.78, 0.875, 0.2); gamepad.rotation.y = 0.4; desk.add(gamepad);
+gamepad.add(box(0.26, 0.05, 0.12, 0x1c1a24));
+[-1, 1].forEach(s => { const gr = blob(sphere(0.06), 0, 0x1c1a24); gr.scale.set(1, 0.6, 1.3); gr.position.set(s * 0.11, 0, 0.04); gamepad.add(gr); });
+const padLight = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.052, 0.02), ledMat(0.3)); padLight.position.z = -0.055; gamepad.add(padLight);
+const can = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.17, 14), mat(0x38b764)); can.castShadow = true; can.position.set(-0.92, 0.925, -0.2); desk.add(can);
+const screenGlow = new THREE.PointLight(0x73eff7, 0, 3.5, 2); screenGlow.position.set(DESK.x, 1.5, DESK.z - 0.4); scene.add(screenGlow);
+
+// PC com lateral de vidro e fans RGB, no chão ao lado da mesa
+const pc = new THREE.Group(); pc.position.set(1.55, 0, 0.05); desk.add(pc);
+const pcCase = box(0.38, 0.95, 0.9, 0x15121f); pcCase.position.set(0.035, 0.475, 0); pc.add(pcCase);
+[[0.93, 0.04, 0.9, 0], [0.02, 0.04, 0.9, 0], [0.475, 0.95, 0.04, -0.43], [0.475, 0.95, 0.04, 0.43]].forEach(([y, h, d, z]) => { const r = box(0.08, h, d, 0x15121f); r.position.set(-0.19, y, z); pc.add(r); });   // moldura do vidro
+const gpu = box(0.05, 0.09, 0.55, 0x2a2436); gpu.position.set(-0.18, 0.4, 0.05); pc.add(gpu);
+const gpuLed = ledLine(0.5, 0.5, 0.25, 0.015); gpuLed.rotation.y = Math.PI / 2; gpuLed.position.set(-0.21, 0.37, 0.05); pc.add(gpuLed);
+[0, 1].forEach(i => { const ram = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.16, 0.02), ledMat(0.7 + i * 0.05)); ram.position.set(-0.18, 0.72, -0.2 + i * 0.05); pc.add(ram); });
+const cooler = box(0.05, 0.18, 0.18, 0x2a2436); cooler.position.set(-0.18, 0.7, 0.12); pc.add(cooler);
+const coolerRing = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.012, 8, 20), ledMat(0.9)); coolerRing.rotation.y = Math.PI / 2; coolerRing.position.set(-0.21, 0.7, 0.12); pc.add(coolerRing);
+const pcGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.82, 0.87), new THREE.MeshStandardMaterial({ color: 0xaaccff, transparent: true, opacity: 0.12, roughness: 0.1, metalness: 0.3 }));
+pcGlass.rotation.y = -Math.PI / 2; pcGlass.position.set(-0.225, 0.475, 0); pc.add(pcGlass);
+const fans = [];
+[0.22, 0.5, 0.78].forEach((y, i) => {
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.018, 8, 24), ledMat(0.15 * i)); ring.position.set(0.035, y, 0.46); pc.add(ring);
+  const rotor = new THREE.Group(); rotor.position.copy(ring.position); pc.add(rotor);
+  for (let k = 0; k < 3; k++) { const b = box(0.2, 0.05, 0.01, 0x2a2436); b.castShadow = false; b.rotation.z = k * Math.PI / 3; rotor.add(b); }
+  fans.push(rotor);
+});
+const pcLight = new THREE.PointLight(0x73eff7, 0.6, 3, 2); pcLight.position.set(-0.5, 0.5, 0.5); pc.add(pcLight);
+
+// cadeira gamer: encosto alto com faixas coloridas e base de 5 pés com rodinhas
+function chair(x, z, yaw, accent) {
+  const g = new THREE.Group();
+  const seat = box(0.62, 0.12, 0.6, 0x1c1a24); seat.position.y = 0.45; g.add(seat);
+  const seatStripe = box(0.2, 0.125, 0.61, accent); seatStripe.position.y = 0.45; g.add(seatStripe);
+  const back = box(0.62, 0.95, 0.12, 0x1c1a24); back.position.set(0, 1.0, -0.3); g.add(back);
+  const backStripe = box(0.18, 0.6, 0.125, accent); backStripe.position.set(0, 1.0, -0.3); g.add(backStripe);
+  [-1, 1].forEach(s => {
+    const wing = box(0.1, 0.8, 0.16, accent); wing.position.set(s * 0.31, 1.0, -0.28); g.add(wing);          // abas laterais
+    const arm = box(0.07, 0.05, 0.34, 0x333c57); arm.position.set(s * 0.37, 0.68, -0.05); g.add(arm);
+    const post = box(0.05, 0.2, 0.05, 0x333c57); post.position.set(s * 0.37, 0.56, -0.1); g.add(post);
+  });
+  const lift = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.32, 10), mat(0x333c57)); lift.position.y = 0.23; g.add(lift);
+  for (let i = 0; i < 5; i++) {
+    const a = i / 5 * Math.PI * 2, l = box(0.06, 0.05, 0.34, 0x15121f);
+    l.rotation.y = a; l.position.set(Math.sin(a) * 0.17, 0.08, Math.cos(a) * 0.17); g.add(l);
+    const w = blob(sphere(0.04), 0, 0x15121f); w.position.set(Math.sin(a) * 0.33, 0.04, Math.cos(a) * 0.33); g.add(w);
+  }
+  g.position.set(x, FLOOR, z); g.rotation.y = yaw; scene.add(g); return g;
+}
+chair(DESK.x, DESK.z + 0.2, Math.PI, 0xd6246e);
+
+// ---- mesa de planejamento + quadro (planejando) ----
+const PLAN = { x: -3.4, z: -2.4 };
+const planTable = table(PLAN.x, PLAN.z - 0.6, 2.0, 1.1, 0x2a2436);
+const paper = box(0.55, 0.02, 0.7, 0xffffff); paper.position.set(0.1, 0.85, 0.05); paper.rotation.y = 0.15; planTable.add(paper);
+const paper2 = box(0.55, 0.02, 0.7, 0xf4f4f4); paper2.position.set(-0.5, 0.85, -0.1); paper2.rotation.y = -0.3; planTable.add(paper2);
+const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.2, 16), mat(0xb13e53)); mug.castShadow = true; mug.position.set(0.7, 0.94, -0.2); planTable.add(mug);
+chair(PLAN.x, PLAN.z + 0.2, Math.PI, 0x2fb8c9);
+const boardCv = document.createElement('canvas'); boardCv.width = 64; boardCv.height = 40;
+const boardG = boardCv.getContext('2d');
+boardCv.width = 256; boardCv.height = 160; boardG.scale(4, 4); boardG.lineWidth = 0.6; boardG.lineCap = 'round';
+const boardTex = new THREE.CanvasTexture(boardCv); boardTex.encoding = THREE.sRGBEncoding;
+const boardFrame = box(2.4, 1.6, 0.12, 0x15121f); boardFrame.position.set(PLAN.x, FLOOR + 1.75, WALL_Z + 0.07); scene.add(boardFrame);
+const boardFace = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.4), new THREE.MeshStandardMaterial({ map: boardTex, roughness: 0.4 }));
+boardFace.position.set(0, 0, 0.065); boardFrame.add(boardFace);
+
+// ---- sofá gamer (revisando) ----
+const BENCH = { x: 3.6, z: 2.4 };
+const bench = new THREE.Group();
+const bbase = box(1.5, 0.3, 0.5, 0x15121f); bbase.position.y = 0.15; bench.add(bbase);
+const bseat = box(1.6, 0.2, 0.6, 0x4a2f85); bseat.position.y = 0.4; bench.add(bseat);
+const bback = box(1.6, 0.55, 0.14, 0x3b2570); bback.position.set(0, 0.72, -0.28); bench.add(bback);
+[-0.8, 0.8].forEach(a => { const l = box(0.16, 0.3, 0.6, 0x3b2570); l.position.set(a, 0.55, 0); bench.add(l); });
+const benchGlow = ledLine(1.5, 0.2, 0.3); benchGlow.position.set(0, 0.05, 0.26); bench.add(benchGlow);
+bench.position.set(BENCH.x, FLOOR, BENCH.z); bench.rotation.y = -Math.PI / 2 - 0.3; scene.add(bench);
+// estante de jogos
+const shelf = new THREE.Group();
+const shelfBox = box(0.5, 1.9, 1.3, 0x15121f); shelfBox.position.y = 0.95; shelf.add(shelfBox);
+for (let r = 0; r < 3; r++) {
+  for (let i = 0; i < 9; i++) {
+    const gm = box(0.3, 0.34, 0.07, [0xd6246e, 0x3b5dc9, 0x38b764, 0xffcd75, 0x7a3fbf, 0x2fb8c9][(r * 2 + i) % 6]);
+    gm.position.set(0.1, 0.35 + r * 0.55, -0.52 + i * 0.13); shelf.add(gm);
+  }
+  const sl = ledLine(1.2, 0.1 * r, 0.3, 0.02); sl.rotation.y = Math.PI / 2; sl.position.set(0.26, 0.16 + r * 0.55, 0); shelf.add(sl);
+}
+const trophyBase = box(0.16, 0.06, 0.16, 0x15121f); trophyBase.position.set(0, 1.93, 0.3); shelf.add(trophyBase);
+const trophy = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.04, 0.16, 14), new THREE.MeshStandardMaterial({ color: 0xffcd75, metalness: 0.7, roughness: 0.3 }));
+trophy.castShadow = true; trophy.position.set(0, 2.04, 0.3); shelf.add(trophy);
+shelf.position.set(ROOM.x1 - 0.27, FLOOR, 2.6); shelf.rotation.y = Math.PI; scene.add(shelf);   // jogos virados pro quarto
+
+// ---- planta ----
+const plant = new THREE.Group();
+const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.4, 16), mat(0xc9956a)); pot.castShadow = true; pot.position.y = 0.2; plant.add(pot);
+const leaves = blob(sphere(0.45), 0.45, 0x3fa652); leaves.position.y = 0.7; plant.add(leaves);
+plant.position.set(-5.3, FLOOR, -3.9); scene.add(plant);
+
+// ---- cama (ocioso) ----
+const BED = { x: -4.4, z: 2.45 };
+const bed = new THREE.Group();
+const frame = box(1.25, 0.3, 2.3, 0x1c1a24); frame.position.y = 0.15; bed.add(frame);
+const mattress = box(1.12, 0.26, 2.18, 0xd9d4e8); mattress.position.y = 0.43; bed.add(mattress);
+const headboard = box(1.25, 0.9, 0.1, 0x1c1a24); headboard.position.set(0, 0.45, -1.15); bed.add(headboard);
+const headGlow = ledLine(1.2, 0.4, 0.2, 0.03); headGlow.position.set(0, 0.87, -1.09); bed.add(headGlow);
+const pillow = box(0.7, 0.14, 0.4, 0xffffff); pillow.position.set(0, 0.63, -0.75); bed.add(pillow);
+const blanket = box(1.14, 0.08, 1.25, 0x5d3fa0); blanket.position.set(0, 0.86, 0.45); bed.add(blanket);
+const blanketFold = box(1.14, 0.09, 0.22, 0xd9d4e8); blanketFold.position.set(0, 0.87, -0.18); bed.add(blanketFold);
+const bedGlow = ledLine(2.2, 0.4, 0.3); bedGlow.rotation.y = Math.PI / 2; bedGlow.position.set(0.64, 0.05, 0); bed.add(bedGlow);   // luz embaixo da cama
+bed.position.set(BED.x, FLOOR, BED.z); scene.add(bed);
+[[-0.55, -1.05], [0.55, -1.05], [-0.55, 1.05], [0.55, 1.05]].forEach(([a, b]) => { const l = box(0.12, 0.2, 0.12, 0x15121f); l.position.set(a, -0.05, b); bed.add(l); });
+// "zzz" flutuando
+function zSprite() {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d'); g.font = '800 44px Nunito, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.lineWidth = 6; g.strokeStyle = '#1a1c2c'; g.strokeText('z', 32, 34); g.fillStyle = '#ffffff'; g.fillText('z', 32, 34);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthTest: false }));
+  sp.renderOrder = 10; sp.visible = false; scene.add(sp); return sp;
+}
+const zzz = [zSprite(), zSprite(), zSprite()];
+
+/* ================= luzes ================= */
+const hemi = new THREE.HemisphereLight(0xfff4e6, 0x8a6a4a, 0.6); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff1d8, 1.35);
+sun.position.set(0.5, 14, 9); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.02; sun.shadow.radius = 4;
+Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: 1, far: 40 });
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0xb48cff, 0.3); fill.position.set(8, 6, -6); scene.add(fill);
+// quarto gamer é mais escuro nos dois temas; quem ilumina de verdade são os LEDs e o neon
+function applyTheme() {
+  const attr = document.documentElement.getAttribute('data-theme');
+  const dark = attr ? attr === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  renderer.setClearColor(dark ? 0x0c0a14 : 0x1c1830); scene.fog.color.set(dark ? 0x0c0a14 : 0x1c1830);
+  hemi.color.set(dark ? 0x6a5acd : 0xd8ccff); hemi.groundColor.set(dark ? 0x140f20 : 0x3a2d50); hemi.intensity = dark ? 0.35 : 0.55;
+  sun.color.set(dark ? 0x9a8cff : 0xfff1e0); sun.intensity = dark ? 0.35 : 0.9; fill.intensity = dark ? 0.2 : 0.3;
+  lampLight.intensity = dark ? 1.4 : 0.6; lampShade.material.emissiveIntensity = dark ? 1.4 : 0.9;
+  neonLight.intensity = dark ? 1.4 : 0.7; pcLight.intensity = dark ? 1.2 : 0.6;
+  drawSky(dark);
+}
+applyTheme();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+/* ================= personagem ================= */
+const hero = new THREE.Group();
+const body = new THREE.Group(); body.position.y = 0.47; hero.add(body);           // torso, braços e cabeça (pra inclinar)
+function leg(x) {
+  const hip = new THREE.Group(); hip.position.set(x, 0.47, 0); hero.add(hip);
+  const up = box(0.2, 0.25, 0.22, 0x29366f); up.position.y = -0.125; hip.add(up);
+  const knee = new THREE.Group(); knee.position.y = -0.25; hip.add(knee);
+  const low = box(0.19, 0.22, 0.21, 0x29366f); low.position.y = -0.11; knee.add(low);
+  const shoe = box(0.21, 0.08, 0.3, 0x5e2f24); shoe.position.set(0, -0.2, 0.04); knee.add(shoe);
+  return { hip, knee };
+}
+const legL = leg(-0.14), legR = leg(0.14);
+function arm(x) {
+  const sh = new THREE.Group(); sh.position.set(x, 0.45, 0); body.add(sh);
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.075, 0.42, 14), mat(0x3b5dc9)); m.castShadow = true; m.position.y = -0.21; sh.add(m);
+  const hand = blob(sphere(0.085), 0.085, 0xf2c98a); hand.position.y = -0.46; sh.add(hand);
+  return sh;
+}
+const armL = arm(-0.39), armR = arm(0.39);
+const torso = box(0.6, 0.5, 0.4, 0x3b5dc9); torso.position.y = 0.23; body.add(torso);
+const belt = box(0.62, 0.08, 0.42, 0x5e2f24); belt.position.y = 0.05; body.add(belt);
+const head = new THREE.Group(); head.position.y = 0.75; body.add(head);
+const skull = blob(sphere(0.3), 0.3, 0xf2c98a); skull.scale.set(1, 0.95, 1); head.add(skull);
+// cara de cansado: pálpebras caídas, olheiras e boca murcha
+[-1, 1].forEach(s => {
+  const e = blob(sphere(0.04), 0.04, 0x1a1c2c); e.castShadow = false; e.position.set(s * 0.11, 0.03, 0.27); head.add(e);
+  const lid = new THREE.Mesh(new THREE.SphereGeometry(0.047, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(0xe8b878));
+  lid.position.copy(e.position); lid.rotation.set(0.45, 0, -s * 0.22); head.add(lid);                                  // meio fechada, caída pra fora
+  const bag = blob(sphere(0.04), 0, 0x9c7480); bag.castShadow = false; bag.scale.set(1.2, 0.35, 0.4); bag.position.set(s * 0.11, -0.03, 0.272); head.add(bag);   // olheira
+});
+const mouthM = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.011, 6, 12, Math.PI), mat(0x7a3b3b)); mouthM.scale.y = 0.45; mouthM.position.set(0.01, -0.15, 0.262); head.add(mouthM);
+// cabelo comprido e bagunçado (fica por baixo do headset)
+const HAIR = 0x3a2618;
+const hairTop = new THREE.Mesh(new THREE.SphereGeometry(0.325, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), mat(HAIR)); hairTop.castShadow = true;
+hairTop.position.y = 0.03; hairTop.rotation.x = -0.25; hairTop.scale.set(1.06, 1, 1.06); head.add(hairTop);
+const hairBack = blob(sphere(0.3), 0, HAIR); hairBack.scale.set(1.08, 1.45, 0.7); hairBack.position.set(0, -0.2, -0.13); head.add(hairBack);   // desce até os ombros
+[-1, 1].forEach(s => { const lock = blob(sphere(0.1), 0, HAIR); lock.scale.set(0.7, 2.1, 0.9); lock.position.set(s * 0.27, -0.2, 0.06); lock.rotation.z = s * 0.12; head.add(lock); });   // mechas dos lados
+[[-0.16, 0.5], [-0.05, 0.1], [0.07, -0.3], [0.18, -0.6]].forEach(([x, rz]) => {   // franja caindo na testa
+  const f = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.2, 8), mat(HAIR)); f.castShadow = true;
+  f.position.set(x, 0.18, 0.25); f.rotation.set(Math.PI + 0.3, 0, rz); head.add(f);
+});
+[[-0.08, 0.6, 0.3], [0.1, -0.5, -0.4], [0, 0.1, 0.9]].forEach(([x, rx, rz]) => {   // fios espetados no topo
+  const sp = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 6), mat(HAIR)); sp.castShadow = true;
+  sp.position.set(x, 0.33, rx * 0.1); sp.rotation.set(rx, 0, rz); head.add(sp);
+});
+// headset gamer com LED nas conchas e microfone
+const band = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.035, 8, 20, Math.PI), mat(0x1c1a24)); band.position.y = 0.02; head.add(band);
+[-1, 1].forEach(s => {
+  const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.09, 16), mat(0x1c1a24)); cup.castShadow = true; cup.rotation.z = Math.PI / 2; cup.position.set(s * 0.33, 0, 0); head.add(cup);
+  const cupLed = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.1, 16), ledMat(0.6)); cupLed.rotation.z = Math.PI / 2; cupLed.position.copy(cup.position); head.add(cupLed);
+});
+const micArm = box(0.025, 0.025, 0.24, 0x1c1a24); micArm.position.set(-0.3, -0.1, 0.14); micArm.rotation.y = -0.35; head.add(micArm);
+const micTip = blob(sphere(0.035), 0, 0x1c1a24); micTip.position.set(-0.22, -0.1, 0.26); head.add(micTip);
+// objetos na mão
+const bookMesh = box(0.5, 0.06, 0.36, 0xffffff); const bookCover = box(0.52, 0.03, 0.38, 0x3b5dc9); bookCover.position.y = -0.04; bookMesh.add(bookCover);
+bookMesh.position.set(0, 0.41, 0.45); bookMesh.rotation.x = -0.6; bookMesh.visible = false; body.add(bookMesh);
+const pen = box(0.05, 0.28, 0.05, 0x1a1c2c); pen.position.set(0, -0.5, 0.05); pen.visible = false; armR.add(pen);
+// balão de pensamento 3D
+const thought = new THREE.Group(); thought.position.set(0.5, 2.15, 0); thought.visible = false; hero.add(thought);
+const tb1 = blob(sphere(0.09), 0.09, 0xffffff); tb1.position.set(-0.2, -0.5, 0); thought.add(tb1);
+const tb2 = blob(sphere(0.14), 0.14, 0xffffff); tb2.position.set(-0.05, -0.25, 0); thought.add(tb2);
+const cloud = blob(sphere(0.42), 0.42, 0xffffff); cloud.scale.set(1.2, 0.9, 0.8); thought.add(cloud);
+const gear = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.06, 12, 24), mat(0xef7d57)); thought.add(gear);
+const cube = box(0.2, 0.2, 0.2, 0x3b5dc9); cube.position.set(0.25, 0.05, 0.1); thought.add(cube);
+hero.position.set(-1.2, FLOOR, 2.2); scene.add(hero);
+
+// confete (concluído)
+const confetti = [];
+function popConfetti(n) {
+  for (let i = 0; i < n; i++) {
+    const c = box(0.12, 0.12, 0.03, [0xffcd75, 0xb13e53, 0x38b764, 0x3b5dc9, 0xf4f4f4][i % 5]); c.castShadow = false;
+    c.position.copy(hero.position).add(new THREE.Vector3(0, 1.4, 0));
+    c.userData.v = new THREE.Vector3((Math.random() - 0.5) * 4, 3 + Math.random() * 3, (Math.random() - 0.5) * 4);
+    c.userData.r = new THREE.Vector3(Math.random() * 6, Math.random() * 6, 0);
+    scene.add(c); confetti.push(c);
+  }
+}
+
+/* ================= estações ================= */
+// spot: onde o personagem fica; yaw: pra onde olha; sit: sentado; knee: dobra do joelho (1 = cadeira, 0 = chão); cam: ângulo da câmera
+const STATIONS = {
+  idle:     { spot: [BED.x, BED.z + 0.95], yaw: 0, sit: 0, lie: 1, lieY: 0.76, cam: 0.2, dist: 8, height: 5 },
+  planning: { spot: [PLAN.x, PLAN.z + 0.2], yaw: Math.PI, sit: 1, knee: 1, seatY: 0.1, cam: -0.9, dist: 6.5, height: 4.2 },
+  coding:   { spot: [DESK.x, DESK.z + 0.2], yaw: Math.PI, sit: 1, knee: 1, seatY: 0.1, cam: 0.9, dist: 6.5, height: 4.2 },
+  review:   { spot: [BENCH.x, BENCH.z], yaw: -Math.PI / 2 - 0.3, sit: 1, knee: 1, seatY: 0.1, cam: -1.6, dist: 6.5, height: 3.8 },
+  thinking: { spot: [-1.2, 2.2], yaw: Math.PI / 2, sit: 0, cam: 0.4, dist: 8, height: 5 },
+  waiting:  { spot: [-1.2, 2.4], yaw: 0.2, sit: 1, knee: 0, seatY: -0.33, cam: 0.15, dist: 6, height: 3.6 },
+  done:     { spot: [-1.2, 2.2], yaw: 0.2, sit: 0, cam: 0.2, dist: 7.5, height: 4.6 },
+};
+let mode = 'idle', phase = 'walk', sitF = 0, lieF = 0, lieY = 0, kneeF = 1, actT = 0, walkT = 0, target = new THREE.Vector3(BED.x, FLOOR, BED.z + 0.95), seatY = 0, paceDir = 1;
+const camPos = new THREE.Vector3(0.6, 10, 12.5), camLook = new THREE.Vector3(0, 0.6, -0.3);
+let zoom = 1.4, zoomTarget = 1.4;
+const ZMIN = 1.4, ZMAX = 3;
+function setZoom(z) { zoomTarget = Math.max(ZMIN, Math.min(ZMAX, z)); document.getElementById('zoomVal').textContent = Math.round((zoomTarget - ZMIN) * 100) + '%'; }
+gameEl.addEventListener('wheel', e => { e.preventDefault(); setZoom(zoomTarget * (e.deltaY < 0 ? 1.12 : 1 / 1.12)); }, { passive: false });
+let pinch = null;
+gameEl.addEventListener('touchstart', e => { if (e.touches.length === 2) pinch = { d: Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY), z: zoomTarget }; }, { passive: true });
+gameEl.addEventListener('touchmove', e => {
+  if (pinch && e.touches.length === 2) { e.preventDefault(); const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); setZoom(pinch.z * d / pinch.d); }
+}, { passive: false });
+gameEl.addEventListener('touchend', () => { pinch = null; });
+document.getElementById('zoomIn').onclick = () => setZoom(zoomTarget * 1.25);
+document.getElementById('zoomOut').onclick = () => setZoom(zoomTarget / 1.25);
+document.getElementById('zoomReset').onclick = () => setZoom(ZMIN);
+addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; if (e.key === '+' || e.key === '=') setZoom(zoomTarget * 1.25); if (e.key === '-') setZoom(zoomTarget / 1.25); if (e.key === '0') setZoom(ZMIN); });
+
+function setMode(m) {
+  if (!MODES[m] || m === mode) return;
+  mode = m; phase = 'stand'; actT = 0; paceDir = 1;
+  const s = STATIONS[m];
+  target = new THREE.Vector3(s.spot[0], FLOOR, s.spot[1]);
+  activity = '';
+  if (location.hash.slice(1) !== m) history.replaceState(null, '', '#' + m);
+  if (m === 'done') setTimeout(() => popConfetti(30), 900);
+}
+// o balão mostra o que o Claude está fazendo agora (o detalhe vem das ferramentas do chat)
+let activity = '';
+const statusText = () => mode === 'idle' ? 'zzz… ' + MODES.idle.sub : `${MODES[mode].label}: ${activity || MODES[mode].sub}`;
+window.setMode = setMode;
+// ---- barra de energia: used = % do limite de 5 h já usado; a barra mostra o que sobra ----
+function setUsage(used, resetsAt) {
+  if (typeof used !== 'number' || !isFinite(used)) return;
+  used = Math.max(0, Math.min(100, used));
+  const left = Math.round(100 - used);
+  const el = document.getElementById('energy'), fill = document.getElementById('energyFill');
+  fill.style.width = left + '%';
+  fill.style.backgroundColor = left > 50 ? '#38b764' : left > 20 ? '#ffcd75' : '#b13e53';
+  el.classList.toggle('low', left <= 10);
+  el.setAttribute('aria-valuenow', left);
+  document.getElementById('energyVal').textContent = left + '%';
+  const r = resetsAt ? new Date(resetsAt < 1e12 ? resetsAt * 1000 : resetsAt) : null;
+  document.getElementById('energySub').textContent = (r && !isNaN(r) ? ` · Reset às ${r.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '');
+}
+window.setUsage = setUsage;
+// ---- ponte com o Claude Code: recebe os modos do server.js via SSE ----
+const autoEl = { checked: true };   // demonstração automática: só quando a página abre sem o server.js
+let connected = false;
+if (/^https?:$/.test(location.protocol) && /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+  try {
+    const es = new EventSource('/events');
+    es.onmessage = e => { try { const d = JSON.parse(e.data); if (d.mode) { autoEl.checked = false; setMode(d.mode); } } catch (_) {} };
+    es.onopen = () => { autoEl.checked = false; };
+    es.addEventListener('chat', e => { try { onChat(JSON.parse(e.data)); } catch (_) {} });
+    es.addEventListener('usage', e => { try { const d = JSON.parse(e.data); setUsage(d.used, d.resetsAt); } catch (_) {} });
+  } catch (_) {}
+}
+
+// ---- chat: o input manda POST /prompt; a resposta chega pelo SSE (evento "chat") ----
+const chatEl = document.getElementById('chat'), logEl = document.getElementById('chatLog'), modesEl = document.getElementById('modes');
+const inputEl = document.getElementById('chatInput'), sendEl = document.getElementById('chatSend');
+const stopEl = document.getElementById('chatStop'), skillsEl = document.getElementById('skillList');
+let aiMsg = null, busy = false, permMode = 'acceptEdits', hasSession = false;
+const NEEDS_SESSION = ['compact', 'context'];
+function addLine(cls, text) {
+  const d = document.createElement('div'); d.className = cls; d.textContent = text;
+  const stick = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 40;
+  logEl.appendChild(d); if (stick) logEl.scrollTop = logEl.scrollHeight;
+  return d;
+}
+const TOOL_VERB = { Read: 'lendo', Grep: 'procurando', Glob: 'procurando arquivos', Edit: 'editando', Write: 'escrevendo' };
+function setBusy(b) {
+  busy = b; sendEl.disabled = b; stopEl.disabled = !b;
+  [...modesEl.children].forEach(el => { if (!['plan', 'normal'].includes(el.dataset.cmd)) el.disabled = b || (NEEDS_SESSION.includes(el.dataset.cmd) && !hasSession); });
+  [...skillsEl.children].forEach(el => { el.disabled = b; });
+}
+// painel "Skills": um botão por skill; clicar roda /nome-da-skill no chat
+function setSkills(list) {
+  skillsEl.textContent = '';
+  (list || []).forEach(s => {
+    const b = document.createElement('button'); b.className = 'btn'; b.type = 'button'; b.disabled = busy;
+    b.innerHTML = '<span></span>'; b.firstChild.textContent = s.name; b.title = s.description || '/' + s.name;
+    b.onclick = () => post('/command', { name: 'skill', skill: s.name });
+    skillsEl.appendChild(b);
+  });
+  document.getElementById('skillEmpty').hidden = skillsEl.children.length > 0;
+  document.getElementById('skills').hidden = false;
+}
+function setPerm(pm) {
+  permMode = pm;
+  [...modesEl.children].forEach(el => { if (el.dataset.cmd === 'plan' || el.dataset.cmd === 'normal') el.setAttribute('aria-pressed', (el.dataset.cmd === 'plan') === (pm === 'plan')); });
+}
+function onChat(d) {
+  if (d.type === 'hello') { connected = true; hasSession = d.hasSession; logEl.textContent = ''; aiMsg = null; chatEl.hidden = false; document.getElementById('cmds').hidden = false; setSkills(d.skills); setBusy(d.busy); setPerm(d.permMode); }   // o servidor manda o histórico logo em seguida
+  else if (d.type === 'perm') setPerm(d.permMode);
+  else if (d.type === 'activity') activity = d.text;
+  else if (d.type === 'note') { aiMsg = null; addLine('msg note', d.text); }
+  else if (d.type === 'start') { addLine('msg me', d.text); aiMsg = null; setBusy(true); }
+  else if (d.type === 'textStart') aiMsg = null;
+  else if (d.type === 'delta') {
+    if (!aiMsg) aiMsg = addLine('msg ai', '');
+    aiMsg.textContent += d.text;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+  else if (d.type === 'tool') {
+    aiMsg = null;   // o que ele está fazendo vai só pro balão, não pro chat
+    activity = `${TOOL_VERB[d.name] || 'usando ' + d.name} ${d.name === 'Glob' ? '' : d.target.split('/').pop()}`.trim();
+  }
+  else if (d.type === 'result') {
+    aiMsg = null;
+    if (d.ok) hasSession = true;
+    if (!d.ok) { if (d.error !== 'interrompido') addLine('msg err', 'Erro: ' + d.error); else if (!d.replay) say('parei!', 2000); }
+  }
+  else if (d.type === 'idle') setBusy(false);
+  else if (d.type === 'reset') { logEl.textContent = ''; aiMsg = null; hasSession = false; setBusy(busy); }
+}
+function post(url, body) {
+  return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
+    .then(r => r.ok ? null : r.json().then(j => say(j.error || 'erro', 2500)));
+}
+// ---- ditado por voz (Web Speech API do navegador: Chrome, Edge, Safari) ----
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+const micEl = document.getElementById('chatMic');
+let rec = null, micBase = '';
+function stopMic(discard) {
+  if (!rec) return;
+  if (discard) rec.onresult = null;   // ao enviar, ignora o que ainda chegar depois
+  rec.stop();
+}
+function startMic() {
+  rec = new SpeechRec();
+  rec.lang = 'pt-BR'; rec.interimResults = true; rec.continuous = true;
+  micBase = inputEl.value.trim() ? inputEl.value.trim() + ' ' : '';   // continua depois do que já foi digitado
+  rec.onresult = e => { inputEl.value = micBase + [...e.results].map(r => r[0].transcript.trim()).join(' '); inputEl.scrollTop = inputEl.scrollHeight; };
+  rec.onerror = e => say(e.error === 'not-allowed' ? 'preciso de permissão pro microfone' : e.error === 'no-speech' ? 'não ouvi nada' : 'o microfone falhou', 2500);
+  rec.onend = () => { rec = null; micEl.setAttribute('aria-pressed', 'false'); inputEl.focus(); };
+  rec.start();
+  micEl.setAttribute('aria-pressed', 'true');
+}
+if (!SpeechRec) micEl.hidden = true;
+else micEl.onclick = () => rec ? stopMic() : startMic();
+document.getElementById('chatForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const text = inputEl.value.trim(); if (!text || sendEl.disabled) return;
+  stopMic(true);
+  inputEl.value = '';
+  const c = text.match(/^\/(plan|compact|context|init|clear)$/);   // comando digitado = mesmo que clicar no botão
+  if (c) runCommand(c[1]); else post('/prompt', { text });
+});
+inputEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); document.getElementById('chatForm').requestSubmit(); }
+  if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); runCommand(permMode === 'plan' ? 'normal' : 'plan'); }   // como no Claude Code
+  if (e.key === 'Escape' && busy) runCommand('stop');
+});
+stopEl.onclick = () => runCommand('stop');
+function runCommand(name) { return post('/command', { name }); }
+addEventListener('message', e => { if (e.data && typeof e.data.mode === 'string') setMode(e.data.mode); });
+addEventListener('hashchange', () => setMode(location.hash.slice(1)));
+
+const COMMANDS = [
+  { cmd: 'normal',  key: '⇧Tab',     label: 'Executar',        sub: 'lê e edita arquivos' },
+  { cmd: 'plan',    key: '/plan',    label: 'Planejar',        sub: 'só lê e monta um plano' },
+  { cmd: 'compact', key: '/compact', label: 'Resumir',         sub: 'encurta a conversa' },
+  { cmd: 'context', key: '/context', label: 'Contexto',        sub: 'quanto da memória já usou' },
+  { cmd: 'init',    key: '/init',    label: 'Criar CLAUDE.md', sub: 'documenta o projeto' },
+  { cmd: 'clear',   key: '/clear',   label: 'Nova conversa',   sub: 'começa do zero' },
+];
+COMMANDS.forEach(c => {
+  const b = document.createElement('button'); b.className = 'btn'; b.dataset.cmd = c.cmd;
+  b.innerHTML = '<kbd></kbd><span></span>'; b.title = c.sub;   // descrição só no tooltip
+  b.children[0].textContent = c.key; b.children[1].textContent = c.label;
+  if (c.cmd === 'plan' || c.cmd === 'normal') b.setAttribute('aria-pressed', c.cmd === 'normal');
+  b.onclick = () => runCommand(c.cmd);
+  modesEl.appendChild(b);
+});
+const AUTO_ORDER = ['planning', 'coding', 'review', 'thinking', 'waiting', 'done', 'idle'];
+let autoT = 0;
+if (MODES[location.hash.slice(1)]) { autoEl.checked = false; setMode(location.hash.slice(1)); }
+
+/* ================= telas (canvas) ================= */
+let codeLines = [], screenT = 0, boardStep = 0, boardT = 0;
+function drawScreen(coding) {
+  screenG.fillStyle = coding ? '#1a1c2c' : '#101420'; screenG.fillRect(0, 0, 56, 36);
+  if (!coding) {
+    screenG.fillStyle = '#3b5dc9'; screenG.fillRect(4, 4, 48, 4);
+    if (Math.floor(performance.now() / 500) % 2) { screenG.fillStyle = '#73eff7'; screenG.fillRect(6, 12, 3, 5); }
+  } else {
+    codeLines.forEach((l, i) => {
+      screenG.fillStyle = l.c; screenG.fillRect(4 + l.ind, 4 + i * 4, l.w, 2);
+      if (l.w2) { screenG.fillStyle = l.c2; screenG.fillRect(4 + l.ind + l.w + 2, 4 + i * 4, l.w2, 2); }
+    });
+    screenG.fillStyle = '#f4f4f4'; screenG.fillRect(4 + (codeLines.length ? codeLines[codeLines.length - 1].ind + codeLines[codeLines.length - 1].w + 4 : 0), 4 + Math.max(0, codeLines.length - 1) * 4, 2, 3);
+  }
+  screenTex.needsUpdate = true;
+}
+function pushCodeLine() {
+  const cols = ['#73eff7', '#ffcd75', '#a7f070', '#b13e53', '#f4f4f4', '#94b0c2'];
+  codeLines.push({ ind: [0, 4, 8, 12][Math.floor(Math.random() * 4)], w: 6 + Math.random() * 22, c: cols[Math.floor(Math.random() * cols.length)], w2: Math.random() > .5 ? 4 + Math.random() * 10 : 0, c2: cols[Math.floor(Math.random() * cols.length)] });
+  if (codeLines.length > 7) codeLines.shift();
+}
+function drawBoard(step) {
+  boardG.fillStyle = '#f4f4f4'; boardG.fillRect(0, 0, 64, 40);
+  const items = [
+    () => { boardG.strokeStyle = '#1a1c2c'; boardG.strokeRect(4.5, 4.5, 16, 8); },
+    () => { boardG.strokeStyle = '#b13e53'; boardG.beginPath(); boardG.moveTo(21, 8); boardG.lineTo(30, 8); boardG.stroke(); },
+    () => { boardG.strokeStyle = '#1a1c2c'; boardG.strokeRect(30.5, 4.5, 16, 8); },
+    () => { boardG.strokeStyle = '#b13e53'; boardG.beginPath(); boardG.moveTo(38, 13); boardG.lineTo(38, 22); boardG.stroke(); },
+    () => { boardG.strokeStyle = '#3b5dc9'; boardG.strokeRect(24.5, 22.5, 28, 10); },
+    () => { boardG.fillStyle = '#ffcd75'; for (let i = 0; i < 4; i++) boardG.fillRect(6, 18 + i * 5, 10 - i * 2, 2); },
+    () => { boardG.fillStyle = '#38b764'; boardG.fillRect(50, 4, 8, 8); boardG.fillStyle = '#f4f4f4'; boardG.fillRect(53, 6, 2, 2); },
+    () => { boardG.strokeStyle = '#b13e53'; boardG.beginPath(); boardG.moveTo(12, 13); boardG.lineTo(12, 18); boardG.stroke(); },
+  ];
+  for (let i = 0; i < Math.min(step, items.length); i++) items[i]();
+  boardTex.needsUpdate = true;
+}
+drawScreen(false); drawBoard(0);
+
+/* ================= balão ================= */
+const bubble = document.getElementById('bubble');
+let sayText = '', sayUntil = 0;
+function say(t, ms = 1600) { sayText = t; sayUntil = performance.now() + ms; }
+function toScreen(v) {
+  const p = v.clone().project(camera);
+  const r = gameEl.getBoundingClientRect(), bw = 9, w = r.width - bw * 2, h = r.height - bw * 2;
+  return { x: Math.round(((p.x + 1) / 2 * w) / SCALE) * SCALE, y: Math.round(((1 - p.y) / 2 * h) / SCALE) * SCALE };
+}
+
+/* ================= loop ================= */
+const clock = new THREE.Clock();
+const SPEED = 2.8;
+const lerpAngle = (a, b, k) => { let d = Math.atan2(Math.sin(b - a), Math.cos(b - a)); return a + d * k; };
+let tGlobal = 0, sayCooldown = 0;
+
+function tick() {
+  const dt = Math.min(clock.getDelta(), 0.05), now = performance.now();
+  tGlobal += dt;
+  const S = STATIONS[mode];
+  const anim = reduce ? 0 : 1;
+
+  // ---- máquina de estados: levanta -> anda -> vira -> senta/age ----
+  let moving = false;
+  if (phase === 'stand') { sitF += (0 - sitF) * Math.min(1, dt * 6); lieF += (0 - lieF) * Math.min(1, dt * 4); if (sitF < 0.03 && lieF < 0.03) { sitF = 0; lieF = 0; phase = 'walk'; } }
+  else if (phase === 'walk') {
+    const dx = target.x - hero.position.x, dz = target.z - hero.position.z, d = Math.hypot(dx, dz);
+    if (d < 0.08) { hero.position.x = target.x; hero.position.z = target.z; phase = 'turn'; }
+    else {
+      const l = Math.min(d, SPEED * dt);
+      hero.position.x += dx / d * l; hero.position.z += dz / d * l;
+      hero.rotation.y = lerpAngle(hero.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 12));
+      moving = true;
+    }
+  } else if (phase === 'turn') {
+    hero.rotation.y = lerpAngle(hero.rotation.y, S.yaw, Math.min(1, dt * 8));
+    if (Math.abs(Math.atan2(Math.sin(S.yaw - hero.rotation.y), Math.cos(S.yaw - hero.rotation.y))) < 0.05) { hero.rotation.y = S.yaw; phase = 'act'; actT = 0; seatY = S.seatY || 0; lieY = S.lieY || 0; kneeF = S.knee ?? 1; }
+  } else if (phase === 'act') {
+    sitF += ((S.sit ? 1 : 0) - sitF) * Math.min(1, dt * 6);
+    lieF += ((S.lie ? 1 : 0) - lieF) * Math.min(1, dt * 4);
+    actT += dt;
+  }
+
+  // ---- pose base ----
+  walkT = moving ? walkT + dt * 10 : walkT * 0.8;
+  const sw = Math.sin(walkT) * (moving ? 0.7 : 0);
+  legL.hip.rotation.x = sw - Math.PI / 2 * sitF; legR.hip.rotation.x = -sw - Math.PI / 2 * sitF;
+  legL.knee.rotation.x = legR.knee.rotation.x = Math.PI / 2 * sitF * kneeF;
+  armL.rotation.x = -sw * 0.8; armR.rotation.x = sw * 0.8; armL.rotation.z = armR.rotation.z = 0;
+  body.rotation.x = 0; head.rotation.set(0, 0, 0); torso.scale.set(1, 1, 1);
+  hero.position.y = FLOOR + (moving ? Math.abs(Math.sin(walkT)) * 0.05 : 0) + seatY * sitF + lieY * lieF;
+  hero.rotation.x = -Math.PI / 2 * lieF;
+  zzz.forEach(z => z.visible = false);
+  thought.visible = false; bookMesh.visible = false; pen.visible = false;
+  screenGlow.intensity = 0;
+  let breathing = Math.sin(tGlobal * 2.5) * 0.02 * anim;
+
+  // ---- ações por modo ----
+  const t = actT;
+  if (phase === 'act') switch (mode) {
+    case 'idle': {
+      // dormindo de costas, respiração lenta
+      const br = Math.sin(t * 1.4) * anim;
+      torso.scale.set(1 + br * 0.03, 1, 1 + br * 0.06);
+      armL.rotation.z = 0.25; armR.rotation.z = -0.25; armL.rotation.x = armR.rotation.x = 0.05;
+      legL.hip.rotation.x = legR.hip.rotation.x = 0.04; legL.knee.rotation.x = legR.knee.rotation.x = 0;
+      head.rotation.z = 0.25 + Math.sin(t * 0.3) * 0.05 * anim;
+      if (lieF > 0.9) zzz.forEach((z, i) => {
+        const ph = ((t * 0.55 + i / 3) % 1);
+        z.visible = anim > 0;
+        z.position.set(hero.position.x + 0.35 + ph * 0.5 + i * 0.05, hero.position.y + 0.55 + ph * 1.1, hero.position.z - 1.15 + ph * 0.15);
+        const sc = 0.22 + ph * 0.28; z.scale.set(sc, sc, 1); z.material.opacity = ph < 0.15 ? ph / 0.15 : 1 - (ph - 0.15) / 0.85;
+      });
+      break;
+    }
+    case 'planning': {
+      body.rotation.x = 0.35;
+      head.rotation.x = 0.45;
+      armL.rotation.x = -1.35; armL.rotation.z = 0.4;             // mão esquerda segura a folha
+      // caneta rabiscando: pequenos círculos e traços
+      armR.rotation.x = -1.45 + Math.sin(t * 9) * 0.08 * anim;
+      armR.rotation.z = -0.25 + Math.sin(t * 6.3) * 0.12 * anim;
+      pen.visible = true;
+      thought.visible = true; thought.position.set(0.55, 1.95, 0.1);
+      thought.scale.setScalar(0.8 + Math.sin(t * 2) * 0.03);
+      gear.rotation.z = t * 2 * anim; gear.rotation.x = 0.4; cube.rotation.y = t * 1.5 * anim; cube.rotation.x = t * 0.7;
+      boardT += dt; if (boardT > 1.6 && anim) { boardT = 0; boardStep = (boardStep + 1) % 10; drawBoard(boardStep); }
+      // de vez em quando olha pro quadro
+      if (Math.sin(t * 0.6) > 0.7) { head.rotation.x = -0.25; body.rotation.x = 0.05; }
+      break;
+    }
+    case 'coding': {
+      const f = 26; // frenético
+      body.rotation.x = 0.28 + Math.sin(t * f / 2) * 0.01 * anim;
+      head.rotation.x = 0.2; head.rotation.y = Math.sin(t * 3) * 0.08 * anim;
+      armL.rotation.x = -1.25 + Math.max(0, Math.sin(t * f)) * 0.22 * anim; armL.rotation.z = 0.28;
+      armR.rotation.x = -1.25 + Math.max(0, Math.sin(t * f + Math.PI)) * 0.22 * anim; armR.rotation.z = -0.28;
+      screenGlow.intensity = 1.2 + Math.sin(t * 20) * 0.3;
+      screenT += dt;
+      if (screenT > 0.12) { screenT = 0; if (Math.random() > 0.15) pushCodeLine(); else codeLines = []; drawScreen(true); }
+
+      break;
+    }
+    case 'review': {
+      body.rotation.x = 0.15 + breathing;
+      bookMesh.visible = true;
+      armL.rotation.x = -1.3; armL.rotation.z = 0.35; armR.rotation.x = -1.3; armR.rotation.z = -0.35;
+      head.rotation.x = 0.5; head.rotation.y = ((t * 0.8) % 1.2 - 0.6) * 0.5 * anim;  // lendo linha a linha
+      if (Math.floor(t / 4) !== Math.floor((t - dt) / 4)) { armR.rotation.x = -1.7; }
+      break;
+    }
+    case 'thinking': {
+      // anda de um lado pro outro no meio do quarto com a mão no queixo
+      const px = -1.2 + Math.sin(t * 0.9) * 1.3;
+      const vx = Math.cos(t * 0.9);
+      hero.position.x = px;
+      hero.rotation.y = lerpAngle(hero.rotation.y, vx > 0 ? Math.PI / 2 : -Math.PI / 2, Math.min(1, dt * 8));
+      walkT += dt * 7 * anim; const s2 = Math.sin(walkT) * 0.5 * Math.abs(vx) * anim;
+      legL.hip.rotation.x = s2; legR.hip.rotation.x = -s2;
+      armL.rotation.x = -s2 * 0.6; armL.rotation.z = 0.12;
+      armR.rotation.x = -2.3; armR.rotation.z = -0.9;              // mão no queixo
+      head.rotation.x = 0.25; head.rotation.z = 0.12; body.rotation.x = 0.1;
+      hero.position.y = FLOOR + Math.abs(Math.sin(walkT)) * 0.04 * anim;
+      thought.visible = true; thought.position.set(0.5, 2.15, 0); thought.scale.setScalar(1);
+      gear.rotation.z = t * 3 * anim; gear.rotation.x = 0.4; cube.rotation.y = t * 2 * anim; cube.rotation.x = t;
+      break;
+    }
+    case 'waiting': {
+      // sentado no chão, pernas esticadas, balança o pé e olha pra câmera
+      legL.knee.rotation.x = 0; legR.knee.rotation.x = 0;
+      legL.hip.rotation.x = -Math.PI / 2 * sitF + 0.15; legR.hip.rotation.x = -Math.PI / 2 * sitF + 0.15;
+      legR.hip.rotation.z = Math.sin(t * 6) * 0.08 * anim; legL.hip.rotation.z = 0;
+      armL.rotation.x = 0.4; armL.rotation.z = 0.5; armR.rotation.x = 0.4; armR.rotation.z = -0.5;   // mãos apoiadas atrás
+      body.rotation.x = -0.15 + breathing;
+      const toCam = Math.atan2(camPos.x - hero.position.x, camPos.z - hero.position.z) - hero.rotation.y;
+      head.rotation.y = Math.atan2(Math.sin(toCam), Math.cos(toCam)) * 0.8;
+      head.rotation.z = Math.sin(t * 0.8) * 0.12 * anim;
+      if (Math.sin(t * 1.5) > 0.9) { armR.rotation.x = -2.6; armR.rotation.z = -0.4; }   // acena de vez em quando
+      break;
+    }
+    case 'done': {
+      // pula comemorando
+      const j = Math.abs(Math.sin(t * 5)) * 0.55 * anim;
+      hero.position.y = FLOOR + j;
+      armL.rotation.x = -2.9; armR.rotation.x = -2.9; armL.rotation.z = 0.5 + Math.sin(t * 10) * 0.2 * anim; armR.rotation.z = -0.5 - Math.sin(t * 10) * 0.2 * anim;
+      legL.hip.rotation.x = -0.4 * (j / 0.55); legR.hip.rotation.x = -0.4 * (j / 0.55); legL.knee.rotation.x = legR.knee.rotation.x = 0.8 * (j / 0.55);
+      head.rotation.x = -0.25;
+      hero.rotation.y = S.yaw + (t > 2 && t < 3.2 ? (t - 2) / 1.2 * Math.PI * 2 : 0);          // um giro
+      if (anim && Math.floor(t / 2.5) !== Math.floor((t - dt) / 2.5) && t < 12) popConfetti(12);
+      break;
+    }
+  }
+  if (mode !== 'waiting') legL.hip.rotation.z = legR.hip.rotation.z = 0;
+  { const d = new Date(), mn = d.getMinutes() + d.getSeconds() / 60; hand1.rotation.z = -mn / 60 * Math.PI * 2; hand2.rotation.z = -((d.getHours() % 12) + mn / 60) / 12 * Math.PI * 2; }   // relógio de verdade
+  if (mode !== 'coding') { screenT += dt; if (screenT > 0.5) { screenT = 0; drawScreen(false); } }
+
+  // ---- RGB: a cor corre pelas fitas de LED ----
+  const hue = reduce ? 0.8 : tGlobal * 0.12;
+  leds.forEach(l => l.m.color.setHSL((hue + l.ph) % 1, 1, 0.55));
+  lampShade.material.emissive.setHSL((hue + 0.15) % 1, 1, 0.5); lampLight.color.setHSL((hue + 0.15) % 1, 1, 0.6);
+  pcLight.color.setHSL((hue + 0.5) % 1, 1, 0.6);
+  fans.forEach(f => f.rotation.z += dt * 10 * anim);
+  neonFace.material.opacity = anim && Math.sin(tGlobal * 0.7) > 0.93 && Math.random() < 0.3 ? 0.35 : 1;   // neon falha de vez em quando
+
+  // ---- confete ----
+  for (let i = confetti.length - 1; i >= 0; i--) {
+    const c = confetti[i]; c.userData.v.y -= 9 * dt;
+    c.position.addScaledVector(c.userData.v, dt); c.rotation.x += c.userData.r.x * dt; c.rotation.y += c.userData.r.y * dt;
+    if (c.position.y < FLOOR + 0.02) { c.position.y = FLOOR + 0.02; c.userData.v.set(0, 0, 0); c.userData.t = (c.userData.t || 0) + dt; }
+    if (c.userData.t > 2.5) { scene.remove(c); confetti.splice(i, 1); }
+  }
+
+  // ---- demo automática ----
+  if (autoEl.checked) { autoT += dt; if (autoT > 9) { autoT = 0; setMode(AUTO_ORDER[(AUTO_ORDER.indexOf(mode) + 1) % AUTO_ORDER.length]); } }
+
+  // ---- câmera fixa, com zoom ----
+  const a = gameEl.clientWidth / gameEl.clientHeight;
+  const wide = a < 1.2;            // tela alta (celular): recua um pouco pra caber tudo
+  zoom += (zoomTarget - zoom) * Math.min(1, dt * 8);
+  const base = new THREE.Vector3(0.6, wide ? 12.5 : 10, wide ? 15 : 12.5);
+  const look = new THREE.Vector3(0, 0.6, -0.3);
+  camPos.lerp(look.clone().add(base.sub(look).multiplyScalar(1 / zoom)), Math.min(1, dt * 6));
+  camLook.lerp(look, Math.min(1, dt * 3));
+  camera.position.copy(camPos); camera.lookAt(camLook);
+
+  renderer.render(scene, camera);
+
+  // ---- balão de fala ----
+  {
+    const p = toScreen(hero.position.clone().add(new THREE.Vector3(0, 2.2 + (thought.visible ? 0.7 : 0), 0)));
+    const t = now < sayUntil ? sayText : statusText();
+    if (bubble.textContent !== t) bubble.textContent = t;
+    bubble.style.left = p.x + 'px'; bubble.style.top = p.y + 'px'; bubble.classList.add('show');
+  }
+
+  requestAnimationFrame(tick);
+}
+resize();
+tick();
+</script>
+</body>
+</html>
