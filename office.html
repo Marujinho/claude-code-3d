@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Escritório 3D — o personagem faz o que o Claude faz</title>
+<title>3D Office — the character does what Claude does</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
@@ -38,7 +38,7 @@
   .zbtn:focus-visible { outline: 3px dashed #b13e53; outline-offset: 2px; }
   .zoom { box-shadow: 0 4px 16px rgba(0,0,0,.18); }
   .tag small { display: block; font-weight: 400; font-size: 14px; color: #566c86; }
-  /* barra de energia = quanto sobra do limite de uso */
+  /* energy bar = how much of the usage limit is left */
   .hud-left { display: flex; gap: 10px; align-items: stretch; min-width: 0; }
   .energy { display: flex; flex-direction: column; justify-content: center; gap: 5px; width: 190px; min-width: 120px; font-size: 14px; }
   .energy-top { display: flex; justify-content: space-between; gap: 8px; line-height: 1; }
@@ -74,9 +74,27 @@
   .cmds code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; color: var(--ink); background: rgba(128,140,160,.18); padding: 1px 5px; border-radius: 5px; }
   .cmds .note[hidden], .modes:empty { display: none; }
   .modes:empty + .note { margin-top: 0; }
-  #skillList .btn span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #skillList .btn span, #mcpList .btn span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #mcpList .btn { cursor: default; }
+  #mcpList .btn:hover { border-color: rgba(128,140,160,.35); }
+  #mcpList .btn span::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; vertical-align: 1px; background: #f4c542; }   /* checking */
+  #mcpList .btn[data-status="checking"] span::before { animation: mcpPulse 1s ease-in-out infinite alternate; }
+  #mcpList .btn[data-status="ok"] span::before { background: #38b764; }
+  #mcpList .btn[data-status="auth"] span::before, #mcpList .btn[data-status="error"] span::before { background: #e04848; }
+  @keyframes mcpPulse { to { opacity: .35; } }
+  @media (prefers-reduced-motion: reduce) { #mcpList .btn span::before { animation: none !important; } }
+  /* accordion: each side panel opens/closes by clicking its title */
+  .acc summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; list-style: none; border-radius: 8px; }
+  .acc summary::-webkit-details-marker { display: none; }
+  .acc summary h2 { margin: 0; }
+  .acc summary::after { content: ""; flex: none; width: 8px; height: 8px; margin-right: 4px; border-right: 2.5px solid var(--muted); border-bottom: 2.5px solid var(--muted); transform: rotate(45deg) translateY(-3px); transition: transform .2s; }
+  .acc details:not([open]) summary::after { transform: rotate(-45deg); }
+  .acc details[open] summary { margin-bottom: 12px; }
+  .acc summary:hover::after { border-color: var(--accent-dark); }
+  .acc summary:focus-visible { outline: 3px dashed #b13e53; outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) { .acc summary::after { transition: none; } }
 
-  /* animação + chat cabem na altura da janela: a cena encolhe, o chat fica sempre visível */
+  /* animation + chat fit the window height: the scene shrinks, the chat stays visible */
   .main { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 14px; min-width: 0; height: calc(100vh - 48px); height: calc(100dvh - 48px); min-height: 520px; }
   .main .game { height: auto; min-height: 260px; }
   @media (max-width: 860px) { .main { height: calc(100vh - 24px); height: calc(100dvh - 24px); min-height: 460px; } .main .game { min-height: 200px; } }
@@ -90,6 +108,21 @@
   .chat form { display: grid; gap: 8px; }
   .chat { padding: 14px; }
   .chat h2 { margin-bottom: 8px; font-size: 17px; }
+  /* "Talk to Claude" title = dropdown with the last conversations */
+  .chat { position: relative; }
+  .sess-btn { font: inherit; color: inherit; background: none; border: 0; padding: 0 4px 0 0; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; border-radius: 8px; }
+  .sess-btn::after { content: ""; width: 7px; height: 7px; border-right: 2.5px solid var(--muted); border-bottom: 2.5px solid var(--muted); transform: rotate(45deg) translateY(-3px); transition: transform .2s; }
+  .sess-btn[aria-expanded="true"]::after { transform: rotate(-135deg) translateY(-1px); }
+  .sess-btn:hover::after { border-color: var(--accent-dark); }
+  .sess-btn:focus-visible { outline: 3px dashed #b13e53; outline-offset: 3px; }
+  .sess-menu { position: absolute; left: 14px; right: 14px; top: 44px; z-index: 5; max-height: 250px; overflow-y: auto; display: grid; gap: 4px; padding: 6px; background: var(--panel); border: 1.5px solid rgba(128,140,160,.35); border-radius: 12px; box-shadow: var(--shadow); }
+  .sess-menu[hidden] { display: none; }
+  .sess-menu .btn { border-color: transparent; width: 100%; }
+  .sess-menu .btn:hover:not(:disabled) { border-color: var(--accent-dark); }
+  .sess-menu .btn[aria-current="true"] { border-color: var(--accent); }
+  .sess-menu .btn span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sess-menu p { margin: 4px 8px; font-size: 14px; color: var(--muted); }
+  @media (prefers-reduced-motion: reduce) { .sess-btn::after { transition: none; } }
   .chat form { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
   @media (max-width: 520px) { .chat form { grid-template-columns: minmax(0, 1fr); } }
   .chat textarea { font: inherit; font-size: 15px; color: var(--ink); background: transparent; border: 1.5px solid rgba(128,140,160,.35); border-radius: 12px; padding: 8px 10px; resize: none; height: 42px; max-height: 120px; }
@@ -106,6 +139,32 @@
   @keyframes micPulse { 50% { box-shadow: 0 0 0 6px rgba(177,62,83,.25); } }
   @media (prefers-reduced-motion: reduce) { .btn.mic[aria-pressed="true"] { animation: none; } }
   .btn:disabled { opacity: .45; cursor: default; }
+
+  /* ---- /settings: "pause menu" over the game (dark, blurred), like pressing Start ---- */
+  .hud-right { display: flex; gap: 8px; align-items: flex-start; pointer-events: auto; }
+  .zbtn.setbtn { width: auto; padding: 0 12px; font-size: 15px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.18); }
+  dialog.pause { border: 0; padding: 0; background: transparent; color: var(--ink); width: min(520px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; }
+  dialog.pause::backdrop { background: rgba(8,10,20,.74); backdrop-filter: blur(6px); }
+  dialog.pause[open] { animation: pauseIn .18s ease-out; }
+  @keyframes pauseIn { from { opacity: 0; transform: scale(.96); } }
+  @media (prefers-reduced-motion: reduce) { dialog.pause[open] { animation: none; } }
+  .set { display: grid; gap: 14px; border: 2px solid var(--accent); }
+  .set-kicker { margin: 0; font-size: 13px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; color: var(--accent-dark); }
+  .set h2 { margin: -8px 0 0; font-size: 28px; letter-spacing: .08em; text-transform: uppercase; }
+  .set .note { margin: 0; font-size: 14px; color: var(--muted); }
+  .set .note[hidden] { display: none; }
+  .set fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 6px; min-width: 0; }
+  .set legend { padding: 0; margin-bottom: 6px; font-weight: 800; font-size: 16px; }
+  .opt { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; padding: 8px 10px; border: 1.5px solid rgba(128,140,160,.35); border-radius: 12px; cursor: pointer; transition: border-color .15s; }
+  .opt:hover { border-color: var(--accent-dark); }
+  .opt:has(input:checked) { border-color: var(--accent); background: rgba(255,205,117,.12); }
+  .opt:has(input:disabled) { cursor: default; opacity: .7; }
+  .opt input { margin: 3px 0 0; width: 18px; height: 18px; accent-color: var(--accent-dark); }
+  .opt input:focus-visible { outline: 3px dashed #b13e53; outline-offset: 2px; }
+  .opt b { display: block; font-size: 15px; }
+  .opt i { display: block; font-style: normal; font-size: 13px; color: var(--muted); }
+  .opt i.warn { color: #b13e53; }
+  .set .row .btn[hidden] { display: none; }
 </style>
 </head>
 <body>
@@ -114,64 +173,107 @@
     <div class="game" id="game">
       <div class="hud">
         <div class="hud-left">
-          <div class="tag energy" id="energy" role="meter" aria-label="Limite de uso restante (5 h)" aria-valuemin="0" aria-valuemax="100">
+          <div class="tag energy" id="energy" role="meter" aria-label="Usage limit remaining (5 h)" aria-valuemin="0" aria-valuemax="100">
             <div class="energy-top"><span>Token Usage</span><b id="energyVal">—</b></div>
             <div class="energy-bar"><div class="energy-fill" id="energyFill"></div></div>
-            <small id="energySub">sem dados do limite</small>
+            <small id="energySub">no limit data</small>
           </div>
         </div>
+        <div class="hud-right">
+        <button class="zbtn setbtn" id="setOpen" type="button" title="Settings (P)" aria-keyshortcuts="P">⚙ Settings</button>
         <div class="zoom" role="group" aria-label="Zoom">
-          <button class="zbtn" id="zoomOut" aria-label="Afastar">−</button>
-          <button class="zbtn zval" id="zoomReset" aria-label="Zoom mínimo"><span id="zoomVal">0%</span></button>
-          <button class="zbtn" id="zoomIn" aria-label="Aproximar">+</button>
+          <button class="zbtn" id="zoomOut" aria-label="Zoom out">−</button>
+          <button class="zbtn zval" id="zoomReset" aria-label="Reset zoom"><span id="zoomVal">0%</span></button>
+          <button class="zbtn" id="zoomIn" aria-label="Zoom in">+</button>
+        </div>
         </div>
       </div>
       <div class="bubble" id="bubble"></div>
     </div>
     <section class="panel chat" id="chat" hidden>
-      <h2>Falar com o Claude</h2>
+      <h2><button class="sess-btn" id="sessBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="sessMenu" title="Previous conversations">Talk to Claude</button></h2>
+      <div class="sess-menu" id="sessMenu" hidden></div>
       <div class="log" id="chatLog" aria-live="polite"></div>
       <form id="chatForm">
-        <textarea id="chatInput" rows="1" placeholder="Ex.: leia o server.js e explique a rota /hook" aria-label="Mensagem para o Claude"></textarea>
+        <textarea id="chatInput" rows="1" placeholder="E.g.: read server.js and explain the /hook route" aria-label="Message to Claude"></textarea>
         <div class="row">
-          <button class="btn mic" id="chatMic" type="button" aria-label="Ditar por voz" aria-pressed="false" title="Ditar por voz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4M8 22h8"/></svg></button>
-          <button class="btn primary" id="chatSend" type="submit">Enviar</button>
-          <button class="btn" id="chatStop" type="button" disabled>Parar</button>
+          <button class="btn mic" id="chatMic" type="button" aria-label="Voice dictation" aria-pressed="false" title="Voice dictation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4M8 22h8"/></svg></button>
+          <button class="btn primary" id="chatSend" type="submit">Send</button>
+          <button class="btn" id="chatStop" type="button" disabled>Stop</button>
         </div>
       </form>
     </section>
   </div>
   <aside>
-    <section class="panel cmds" id="cmds" hidden>
-      <h2>Comandos</h2>
-      <div class="modes" id="modes"></div>
-      <p class="note">Também dá pra digitar no chat: <code>/plan</code>, <code>/compact</code>… <kbd>⇧Tab</kbd> alterna planejar/executar e <kbd>Esc</kbd> para.</p>
+    <section class="panel cmds acc" id="cmds" hidden>
+      <details data-key="cmds">
+        <summary><h2>Commands</h2></summary>
+        <div class="modes" id="modes"></div>
+        <p class="note">You can also type them in the chat: <code>/plan</code>, <code>/compact</code>… <kbd>⇧Tab</kbd> toggles plan/execute and <kbd>Esc</kbd> stops.</p>
+      </details>
     </section>
-    <section class="panel cmds" id="skills" hidden>
-      <h2>Skills</h2>
-      <div class="modes" id="skillList"></div>
-      <p class="note" id="skillEmpty" hidden>Nenhuma skill criada ainda.</p>
+    <section class="panel cmds acc" id="skills" hidden>
+      <details data-key="skills">
+        <summary><h2>Skills</h2></summary>
+        <div class="modes" id="skillList"></div>
+        <p class="note" id="skillEmpty" hidden>No skills created yet.</p>
+      </details>
+    </section>
+    <section class="panel cmds acc" id="mcps" hidden>
+      <details data-key="mcps">
+        <summary><h2>MCP</h2></summary>
+        <div class="modes" id="mcpList"></div>
+        <p class="note" id="mcpEmpty" hidden>No MCP servers configured. Add one with <code>claude mcp add</code>.</p>
+        <p class="note" id="mcpNote">The chat here runs without MCP; turn it on in Settings.</p>
+      </details>
     </section>
   </aside>
 </div>
 
+<!-- /settings: opens over the page like a game's pause menu; also the first-run onboarding -->
+<dialog class="pause" id="settings" aria-labelledby="setTitle">
+  <form class="panel set" id="setForm" method="dialog">
+    <p class="set-kicker" id="setKicker">Paused</p>
+    <h2 id="setTitle">Settings</h2>
+    <p class="note" id="setIntro" hidden>Welcome! Choose what Claude can do in this page’s chat. You can change it anytime in ⚙ Settings.</p>
+    <fieldset>
+      <legend>Chat permissions</legend>
+      <label class="opt"><input type="checkbox" checked disabled><span><b>Read files</b><i>always on: read and search the project</i></span></label>
+      <label class="opt"><input type="checkbox" name="edit"><span><b>Edit files</b><i>create and change files in the project folder</i></span></label>
+      <label class="opt"><input type="checkbox" name="bash"><span><b>Run commands (Bash)</b><i class="warn">runs shell commands on this computer</i></span></label>
+      <label class="opt"><input type="checkbox" name="web"><span><b>Web access</b><i>searches and opens web pages</i></span></label>
+      <label class="opt"><input type="checkbox" name="mcp"><span><b>Use MCP servers</b><i>the servers in the MCP panel (Gmail, Drive…)</i></span></label>
+    </fieldset>
+    <fieldset>
+      <legend>Approval</legend>
+      <label class="opt"><input type="radio" name="mode" value="auto"><span><b>Auto, like the terminal</b><i>Claude Code’s auto mode reviews each action and blocks risky ones</i></span></label>
+      <label class="opt"><input type="radio" name="mode" value="acceptEdits"><span><b>Allow everything checked</b><i class="warn">every tool checked above runs without review</i></span></label>
+    </fieldset>
+    <p class="note">The page can’t ask you for approval, so anything that would need it is denied. Changes apply to the next message.</p>
+    <div class="row">
+      <button class="btn" id="setBack" type="button">Back</button>
+      <button class="btn primary" id="setSave" type="submit">Save</button>
+    </div>
+  </form>
+</dialog>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-/* ================= modos ================= */
+/* ================= modes ================= */
 const MODES = {
-  idle:     { label: 'Aguardando',       sub: '', bubble: 'zzz…' },
-  planning: { label: 'Planejando',   sub: '...',  bubble: 'hmm… primeiro isso, depois aquilo' },
-  coding:   { label: 'Programando',  sub: '...',  bubble: 'tac tac tac tac' },
-  review:   { label: 'Revisando',    sub: '...',    bubble: 'aqui tem um bug…' },
-  thinking: { label: 'Pensando',     sub: '...', bubble: 'e se…?' },
-  waiting:  { label: 'Esperando você', sub: '',   bubble: 'e aí, o que acha?' },
-  done:     { label: 'Concluído',    sub: '!', bubble: 'pronto!' },
+  idle:     { label: 'Idle',       sub: '', bubble: 'zzz…' },
+  planning: { label: 'Planning',   sub: '...',  bubble: 'hmm… first this, then that' },
+  coding:   { label: 'Coding',  sub: '...',  bubble: 'tap tap tap tap' },
+  review:   { label: 'Reviewing',    sub: '...',    bubble: 'there’s a bug here…' },
+  thinking: { label: 'Thinking',     sub: '...', bubble: 'what if…?' },
+  waiting:  { label: 'Waiting for you', sub: '',   bubble: 'so, what do you think?' },
+  done:     { label: 'Done',    sub: '!', bubble: 'all done!' },
 };
 const gameEl = document.getElementById('game');
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-if (!window.THREE) { const t = document.createElement('div'); t.className = 'tag'; t.textContent = 'Não foi possível carregar o Three.js. Recarregue a página.'; document.querySelector('.hud-left').prepend(t); }
+if (!window.THREE) { const t = document.createElement('div'); t.className = 'tag'; t.textContent = 'Couldn’t load Three.js. Reload the page.'; document.querySelector('.hud-left').prepend(t); }
 
-/* ================= renderer / câmera ================= */
+/* ================= renderer / camera ================= */
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
 renderer.shadowMap.enabled = true;
@@ -179,7 +281,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
-renderer.domElement.setAttribute('aria-label', 'Quarto gamer 3D com o personagem trabalhando');
+renderer.domElement.setAttribute('aria-label', '3D gamer room with the character working');
 gameEl.insertBefore(renderer.domElement, gameEl.firstChild);
 
 const scene = new THREE.Scene();
@@ -193,7 +295,7 @@ function resize() {
 }
 new ResizeObserver(resize).observe(gameEl);
 
-/* ================= materiais estilo cartoon ================= */
+/* ================= cartoon-style materials ================= */
 const matCache = {};
 const mat = c => matCache[c] || (matCache[c] = new THREE.MeshStandardMaterial({ color: c, roughness: 0.82, metalness: 0.02 }));
 const surf = (map) => new THREE.MeshStandardMaterial({ map, roughness: 0.9, metalness: 0 });
@@ -207,7 +309,7 @@ function blob(geo, r, color) {
   return m;
 }
 const sphere = (r) => new THREE.SphereGeometry(r, 20, 14);
-// LEDs RGB: cada pedaço tem uma fase, e o tick faz a cor correr (ver "RGB" no loop)
+// RGB LEDs: each piece has a phase, and tick makes the color run (see "RGB" in the loop)
 const leds = [];
 function ledMat(ph) { const m = new THREE.MeshBasicMaterial({ color: 0xff3df2, toneMapped: false }); leds.push({ m, ph }); return m; }
 function ledLine(len, ph0, span, thick = 0.04) {
@@ -223,7 +325,7 @@ function pixelTexture(cv, rx, ry) {
   t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry);
   return t;
 }
-// papel de parede: listras suaves com bolinhas
+// wallpaper: soft stripes with dots
 function wallpaperCanvas(base, stripe, dot) {
   const c = document.createElement('canvas'); c.width = c.height = 128;
   const g = c.getContext('2d'); g.fillStyle = base; g.fillRect(0, 0, 128, 128);
@@ -231,7 +333,7 @@ function wallpaperCanvas(base, stripe, dot) {
   g.fillStyle = dot; for (let y = 8; y < 128; y += 32) for (let x = 22; x < 128; x += 32) { g.beginPath(); g.arc(x, y, 2.2, 0, Math.PI * 2); g.fill(); g.beginPath(); g.arc(x, y + 16, 2.2, 0, Math.PI * 2); g.fill(); }
   return c;
 }
-// madeira: tábuas com veios
+// wood: planks with grain
 function woodCanvas(base, dark, light) {
   const c = document.createElement('canvas'); c.width = c.height = 128;
   const g = c.getContext('2d'); g.fillStyle = base; g.fillRect(0, 0, 128, 128);
@@ -244,8 +346,8 @@ function woodCanvas(base, dark, light) {
   return c;
 }
 
-/* ================= o quarto ================= */
-// três paredes (fundo, esquerda, direita) e o chão; a frente fica aberta pra câmera, como uma casa de bonecas
+/* ================= the room ================= */
+// three walls (back, left, right) and the floor; the front stays open for the camera, like a dollhouse
 const ROOM = { x0: -5.8, x1: 5.8, z0: -4.5, z1: 4.0, h: 3.2 };
 const FLOOR = 0.16;
 const roomW = ROOM.x1 - ROOM.x0, roomD = ROOM.z1 - ROOM.z0, roomCz = (ROOM.z0 + ROOM.z1) / 2;
@@ -259,18 +361,18 @@ function wall(w, x, z, yaw, ph0) {
   const t = wallTex.clone(); t.needsUpdate = true; t.repeat.set(w / 1.6, ROOM.h / 1.6);
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, ROOM.h, 0.2), surf(t));
   m.position.set(x, FLOOR + ROOM.h / 2, z); m.rotation.y = yaw; m.receiveShadow = true; scene.add(m);
-  const base = box(w, 0.18, 0.06, 0x15121f); base.castShadow = false; base.position.set(0, -ROOM.h / 2 + 0.09, 0.13); m.add(base);   // rodapé
-  const top = box(w + 0.2, 0.12, 0.3, 0x15121f); top.castShadow = false; top.position.set(0, ROOM.h / 2 + 0.06, 0); m.add(top);       // acabamento de cima
-  const strip = ledLine(w - 0.2, ph0, 1 / 3); strip.position.set(0, ROOM.h / 2 - 0.1, 0.12); m.add(strip);                             // fita de LED no teto
+  const base = box(w, 0.18, 0.06, 0x15121f); base.castShadow = false; base.position.set(0, -ROOM.h / 2 + 0.09, 0.13); m.add(base);   // baseboard
+  const top = box(w + 0.2, 0.12, 0.3, 0x15121f); top.castShadow = false; top.position.set(0, ROOM.h / 2 + 0.06, 0); m.add(top);       // top trim
+  const strip = ledLine(w - 0.2, ph0, 1 / 3); strip.position.set(0, ROOM.h / 2 - 0.1, 0.12); m.add(strip);                             // LED strip at the ceiling
   return m;
 }
-// as fitas emendam: esquerda (frente → fundo), fundo (esq → dir), direita (fundo → frente)
+// the strips join up: left (front → back), back (left → right), right (back → front)
 const leftWall = wall(roomD, ROOM.x0 - 0.1, roomCz, Math.PI / 2, 0);
 const backWall = wall(roomW + 0.2, 0, ROOM.z0 - 0.1, 0, 1 / 3);
 const rightWall = wall(roomD, ROOM.x1 + 0.1, roomCz, -Math.PI / 2, 2 / 3);
-const WALL_Z = ROOM.z0 + 0.02;   // face interna da parede do fundo
+const WALL_Z = ROOM.z0 + 0.02;   // inner face of the back wall
 
-// janela no meio da parede do fundo (céu de dia, estrelas à noite)
+// window in the middle of the back wall (sky by day, stars at night)
 const skyCv = document.createElement('canvas'); skyCv.width = 128; skyCv.height = 96;
 const skyG = skyCv.getContext('2d');
 const skyTex = new THREE.CanvasTexture(skyCv); skyTex.encoding = THREE.sRGBEncoding;
@@ -290,17 +392,17 @@ const glass = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 1.4), new THREE.MeshBa
 const sill = box(2.4, 0.08, 0.28, 0x2a2436); sill.position.set(0, -0.82, 0.14); win.add(sill);
 const cactusPot = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.16, 12), mat(0xc9956a)); cactusPot.position.set(0.7, -0.7, 0.14); win.add(cactusPot);
 const cactus = blob(new THREE.CylinderGeometry(0.06, 0.06, 0.26, 10), 0, 0x38b764); cactus.position.set(0.7, -0.5, 0.14); win.add(cactus);
-[-1, 1].forEach(a => { const c = box(0.5, 1.75, 0.06, 0x3a2a5c); c.castShadow = false; c.position.set(a * 1.35, 0.05, 0.12); win.add(c); });   // cortinas
+[-1, 1].forEach(a => { const c = box(0.5, 1.75, 0.06, 0x3a2a5c); c.castShadow = false; c.position.set(a * 1.35, 0.05, 0.12); win.add(c); });   // curtains
 const rod = box(3.2, 0.05, 0.05, 0x15121f); rod.position.set(0, 0.95, 0.14); win.add(rod);
 
-// letreiro neon em cima do computador e relógio
+// neon sign above the computer, and clock
 const DESK = { x: 3.4, z: -2.4 };
 const neonCv = document.createElement('canvas'); neonCv.width = 256; neonCv.height = 160;
 const neonTex = new THREE.CanvasTexture(neonCv); neonTex.encoding = THREE.sRGBEncoding;
 function drawNeon() {
   const g = neonCv.getContext('2d'); g.clearRect(0, 0, 256, 160);
   g.textAlign = 'center'; g.textBaseline = 'middle'; g.shadowBlur = 16;
-  for (let k = 0; k < 2; k++) {   // duas passadas = brilho mais forte
+  for (let k = 0; k < 2; k++) {   // two passes = stronger glow
     g.shadowColor = '#ff3df2'; g.fillStyle = '#ffd6fb'; g.font = '800 92px Nunito, sans-serif'; g.fillText('GG', 128, 66);
     g.shadowColor = '#3df2ff'; g.fillStyle = '#d6fbff'; g.font = '800 26px Nunito, sans-serif'; g.fillText('PLAYER ONE', 128, 132);
   }
@@ -316,7 +418,7 @@ const clockRim = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.035, 8, 28), led
 const hand1 = box(0.03, 0.18, 0.02, 0xf4f4f4); hand1.castShadow = false; hand1.geometry.translate(0, 0.09, 0); hand1.position.set(2.05, FLOOR + 2.55, WALL_Z + 0.08); scene.add(hand1);
 const hand2 = box(0.03, 0.12, 0.02, 0xf4f4f4); hand2.castShadow = false; hand2.geometry.translate(0, 0.06, 0); hand2.position.copy(hand1.position); scene.add(hand2);
 
-// quadros de pixel art na parede da esquerda, acima da cama
+// pixel art frames on the left wall, above the bed
 function spriteTexture(rows, fg, bg) {
   const px = 8, c = document.createElement('canvas'); c.width = 16 * px; c.height = 12 * px;
   const g = c.getContext('2d'); g.fillStyle = bg; g.fillRect(0, 0, c.width, c.height); g.fillStyle = fg;
@@ -332,7 +434,7 @@ const HEART = ['.XX.XX.', 'XXXXXXX', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...']
   pic.rotation.y = Math.PI / 2; pic.position.x = 0.025; fr.add(pic);
 });
 
-// tubo de LED ao lado da cama (a cor muda no loop)
+// LED tube next to the bed (color changes in the loop)
 const lamp = new THREE.Group(); lamp.position.set(-5.25, FLOOR, 0.9); scene.add(lamp);
 const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.06, 16), mat(0x15121f)); lampBase.position.y = 0.03; lamp.add(lampBase);
 const lampShade = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 1.5, 12), new THREE.MeshStandardMaterial({ color: 0x222222, emissive: 0xff3df2, emissiveIntensity: 1 }));
@@ -340,7 +442,7 @@ lampShade.position.y = 0.81; lamp.add(lampShade);
 const lampCap = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.06, 12), mat(0x15121f)); lampCap.position.y = 1.59; lamp.add(lampCap);
 const lampLight = new THREE.PointLight(0xff3df2, 0.6, 6, 2); lampLight.position.set(-5.1, FLOOR + 1.2, 0.9); scene.add(lampLight);
 
-// espuma acústica na parede da direita, em xadrez (ranhuras alternando em pé/deitadas)
+// acoustic foam on the right wall, checkerboard (ridges alternating vertical/horizontal)
 for (let r = 0; r < 3; r++) for (let c = 0; c < 6; c++) {
   const alt = (r + c) % 2;
   const p = box(0.06, 0.42, 0.42, alt ? 0x2a2436 : 0x5a3596); p.castShadow = false;
@@ -348,7 +450,7 @@ for (let r = 0; r < 3; r++) for (let c = 0; c < 6; c++) {
   [-0.13, 0, 0.13].forEach(o => { const rg = box(0.04, alt ? 0.06 : 0.42, alt ? 0.42 : 0.06, alt ? 0x2a2436 : 0x5a3596); rg.castShadow = false; rg.position.set(-0.04, alt ? o : 0, alt ? 0 : o); p.add(rg); });
 }
 
-// ---- setup gamer (construindo) ----
+// ---- gaming setup (coding) ----
 function table(x, z, w, d, color, legColor = 0x15121f) {
   const g = new THREE.Group();
   const top = box(w, 0.12, d, color); top.position.y = 0.78; g.add(top);
@@ -356,7 +458,7 @@ function table(x, z, w, d, color, legColor = 0x15121f) {
   g.position.set(x, FLOOR, z); scene.add(g); return g;
 }
 const desk = table(DESK.x, DESK.z - 0.6, 2.2, 1.0, 0x1c1a24);
-const deskGlow = ledLine(2.1, 0, 0.5); deskGlow.position.set(0, 0.7, 0.47); desk.add(deskGlow);   // luz embaixo do tampo
+const deskGlow = ledLine(2.1, 0, 0.5); deskGlow.position.set(0, 0.7, 0.47); desk.add(deskGlow);   // light under the desktop
 const screenCv = document.createElement('canvas'); screenCv.width = 56; screenCv.height = 36;
 const screenG = screenCv.getContext('2d');
 screenCv.width = 224; screenCv.height = 144; screenG.scale(4, 4);
@@ -371,7 +473,7 @@ const keyboard = box(0.7, 0.05, 0.25, 0x1c1a24); keyboard.position.set(0, 0.875,
 const kbGlow = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.03, 0.27), ledMat(0.35)); kbGlow.position.set(0, 0.865, 0.18); desk.add(kbGlow);
 const mouse = box(0.12, 0.05, 0.18, 0x1c1a24); mouse.position.set(0.55, 0.875, 0.18); desk.add(mouse);
 const mouseLed = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.052, 0.06), ledMat(0.6)); mouseLed.position.z = -0.03; mouse.add(mouseLed);
-// controle e latinha de energético
+// gamepad and energy drink can
 const gamepad = new THREE.Group(); gamepad.position.set(-0.78, 0.875, 0.2); gamepad.rotation.y = 0.4; desk.add(gamepad);
 gamepad.add(box(0.26, 0.05, 0.12, 0x1c1a24));
 [-1, 1].forEach(s => { const gr = blob(sphere(0.06), 0, 0x1c1a24); gr.scale.set(1, 0.6, 1.3); gr.position.set(s * 0.11, 0, 0.04); gamepad.add(gr); });
@@ -379,10 +481,10 @@ const padLight = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.052, 0.02), ledMat(
 const can = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.17, 14), mat(0x38b764)); can.castShadow = true; can.position.set(-0.92, 0.925, -0.2); desk.add(can);
 const screenGlow = new THREE.PointLight(0x73eff7, 0, 3.5, 2); screenGlow.position.set(DESK.x, 1.5, DESK.z - 0.4); scene.add(screenGlow);
 
-// PC com lateral de vidro e fans RGB, no chão ao lado da mesa
+// PC with glass side panel and RGB fans, on the floor next to the desk
 const pc = new THREE.Group(); pc.position.set(1.55, 0, 0.05); desk.add(pc);
 const pcCase = box(0.38, 0.95, 0.9, 0x15121f); pcCase.position.set(0.035, 0.475, 0); pc.add(pcCase);
-[[0.93, 0.04, 0.9, 0], [0.02, 0.04, 0.9, 0], [0.475, 0.95, 0.04, -0.43], [0.475, 0.95, 0.04, 0.43]].forEach(([y, h, d, z]) => { const r = box(0.08, h, d, 0x15121f); r.position.set(-0.19, y, z); pc.add(r); });   // moldura do vidro
+[[0.93, 0.04, 0.9, 0], [0.02, 0.04, 0.9, 0], [0.475, 0.95, 0.04, -0.43], [0.475, 0.95, 0.04, 0.43]].forEach(([y, h, d, z]) => { const r = box(0.08, h, d, 0x15121f); r.position.set(-0.19, y, z); pc.add(r); });   // glass frame
 const gpu = box(0.05, 0.09, 0.55, 0x2a2436); gpu.position.set(-0.18, 0.4, 0.05); pc.add(gpu);
 const gpuLed = ledLine(0.5, 0.5, 0.25, 0.015); gpuLed.rotation.y = Math.PI / 2; gpuLed.position.set(-0.21, 0.37, 0.05); pc.add(gpuLed);
 [0, 1].forEach(i => { const ram = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.16, 0.02), ledMat(0.7 + i * 0.05)); ram.position.set(-0.18, 0.72, -0.2 + i * 0.05); pc.add(ram); });
@@ -399,7 +501,7 @@ const fans = [];
 });
 const pcLight = new THREE.PointLight(0x73eff7, 0.6, 3, 2); pcLight.position.set(-0.5, 0.5, 0.5); pc.add(pcLight);
 
-// cadeira gamer: encosto alto com faixas coloridas e base de 5 pés com rodinhas
+// gaming chair: high back with colored stripes and a 5-leg base with wheels
 function chair(x, z, yaw, accent) {
   const g = new THREE.Group();
   const seat = box(0.62, 0.12, 0.6, 0x1c1a24); seat.position.y = 0.45; g.add(seat);
@@ -407,7 +509,7 @@ function chair(x, z, yaw, accent) {
   const back = box(0.62, 0.95, 0.12, 0x1c1a24); back.position.set(0, 1.0, -0.3); g.add(back);
   const backStripe = box(0.18, 0.6, 0.125, accent); backStripe.position.set(0, 1.0, -0.3); g.add(backStripe);
   [-1, 1].forEach(s => {
-    const wing = box(0.1, 0.8, 0.16, accent); wing.position.set(s * 0.31, 1.0, -0.28); g.add(wing);          // abas laterais
+    const wing = box(0.1, 0.8, 0.16, accent); wing.position.set(s * 0.31, 1.0, -0.28); g.add(wing);          // side wings
     const arm = box(0.07, 0.05, 0.34, 0x333c57); arm.position.set(s * 0.37, 0.68, -0.05); g.add(arm);
     const post = box(0.05, 0.2, 0.05, 0x333c57); post.position.set(s * 0.37, 0.56, -0.1); g.add(post);
   });
@@ -421,7 +523,7 @@ function chair(x, z, yaw, accent) {
 }
 chair(DESK.x, DESK.z + 0.2, Math.PI, 0xd6246e);
 
-// ---- mesa de planejamento + quadro (planejando) ----
+// ---- planning table + whiteboard (planning) ----
 const PLAN = { x: -3.4, z: -2.4 };
 const planTable = table(PLAN.x, PLAN.z - 0.6, 2.0, 1.1, 0x2a2436);
 const paper = box(0.55, 0.02, 0.7, 0xffffff); paper.position.set(0.1, 0.85, 0.05); paper.rotation.y = 0.15; planTable.add(paper);
@@ -436,7 +538,7 @@ const boardFrame = box(2.4, 1.6, 0.12, 0x15121f); boardFrame.position.set(PLAN.x
 const boardFace = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.4), new THREE.MeshStandardMaterial({ map: boardTex, roughness: 0.4 }));
 boardFace.position.set(0, 0, 0.065); boardFrame.add(boardFace);
 
-// ---- sofá gamer (revisando) ----
+// ---- gaming couch (reviewing) ----
 const BENCH = { x: 3.6, z: 2.4 };
 const bench = new THREE.Group();
 const bbase = box(1.5, 0.3, 0.5, 0x15121f); bbase.position.y = 0.15; bench.add(bbase);
@@ -445,7 +547,7 @@ const bback = box(1.6, 0.55, 0.14, 0x3b2570); bback.position.set(0, 0.72, -0.28)
 [-0.8, 0.8].forEach(a => { const l = box(0.16, 0.3, 0.6, 0x3b2570); l.position.set(a, 0.55, 0); bench.add(l); });
 const benchGlow = ledLine(1.5, 0.2, 0.3); benchGlow.position.set(0, 0.05, 0.26); bench.add(benchGlow);
 bench.position.set(BENCH.x, FLOOR, BENCH.z); bench.rotation.y = -Math.PI / 2 - 0.3; scene.add(bench);
-// estante de jogos
+// game shelf
 const shelf = new THREE.Group();
 const shelfBox = box(0.5, 1.9, 1.3, 0x15121f); shelfBox.position.y = 0.95; shelf.add(shelfBox);
 for (let r = 0; r < 3; r++) {
@@ -458,15 +560,15 @@ for (let r = 0; r < 3; r++) {
 const trophyBase = box(0.16, 0.06, 0.16, 0x15121f); trophyBase.position.set(0, 1.93, 0.3); shelf.add(trophyBase);
 const trophy = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.04, 0.16, 14), new THREE.MeshStandardMaterial({ color: 0xffcd75, metalness: 0.7, roughness: 0.3 }));
 trophy.castShadow = true; trophy.position.set(0, 2.04, 0.3); shelf.add(trophy);
-shelf.position.set(ROOM.x1 - 0.27, FLOOR, 2.6); shelf.rotation.y = Math.PI; scene.add(shelf);   // jogos virados pro quarto
+shelf.position.set(ROOM.x1 - 0.27, FLOOR, 2.6); shelf.rotation.y = Math.PI; scene.add(shelf);   // games facing the room
 
-// ---- planta ----
+// ---- plant ----
 const plant = new THREE.Group();
 const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.4, 16), mat(0xc9956a)); pot.castShadow = true; pot.position.y = 0.2; plant.add(pot);
 const leaves = blob(sphere(0.45), 0.45, 0x3fa652); leaves.position.y = 0.7; plant.add(leaves);
 plant.position.set(-5.3, FLOOR, -3.9); scene.add(plant);
 
-// ---- cama (ocioso) ----
+// ---- bed (idle) ----
 const BED = { x: -4.4, z: 2.45 };
 const bed = new THREE.Group();
 const frame = box(1.25, 0.3, 2.3, 0x1c1a24); frame.position.y = 0.15; bed.add(frame);
@@ -476,10 +578,10 @@ const headGlow = ledLine(1.2, 0.4, 0.2, 0.03); headGlow.position.set(0, 0.87, -1
 const pillow = box(0.7, 0.14, 0.4, 0xffffff); pillow.position.set(0, 0.63, -0.75); bed.add(pillow);
 const blanket = box(1.14, 0.08, 1.25, 0x5d3fa0); blanket.position.set(0, 0.86, 0.45); bed.add(blanket);
 const blanketFold = box(1.14, 0.09, 0.22, 0xd9d4e8); blanketFold.position.set(0, 0.87, -0.18); bed.add(blanketFold);
-const bedGlow = ledLine(2.2, 0.4, 0.3); bedGlow.rotation.y = Math.PI / 2; bedGlow.position.set(0.64, 0.05, 0); bed.add(bedGlow);   // luz embaixo da cama
+const bedGlow = ledLine(2.2, 0.4, 0.3); bedGlow.rotation.y = Math.PI / 2; bedGlow.position.set(0.64, 0.05, 0); bed.add(bedGlow);   // light under the bed
 bed.position.set(BED.x, FLOOR, BED.z); scene.add(bed);
 [[-0.55, -1.05], [0.55, -1.05], [-0.55, 1.05], [0.55, 1.05]].forEach(([a, b]) => { const l = box(0.12, 0.2, 0.12, 0x15121f); l.position.set(a, -0.05, b); bed.add(l); });
-// "zzz" flutuando
+// floating "zzz"
 function zSprite() {
   const c = document.createElement('canvas'); c.width = c.height = 64;
   const g = c.getContext('2d'); g.font = '800 44px Nunito, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -490,7 +592,7 @@ function zSprite() {
 }
 const zzz = [zSprite(), zSprite(), zSprite()];
 
-/* ================= luzes ================= */
+/* ================= lights ================= */
 const hemi = new THREE.HemisphereLight(0xfff4e6, 0x8a6a4a, 0.6); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff1d8, 1.35);
 sun.position.set(0.5, 14, 9); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
@@ -498,7 +600,7 @@ sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.02; sun.shadow.radius = 4;
 Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: 1, far: 40 });
 scene.add(sun);
 const fill = new THREE.DirectionalLight(0xb48cff, 0.3); fill.position.set(8, 6, -6); scene.add(fill);
-// quarto gamer é mais escuro nos dois temas; quem ilumina de verdade são os LEDs e o neon
+// the gamer room is dark in both themes; the LEDs and the neon do the real lighting
 function applyTheme() {
   const attr = document.documentElement.getAttribute('data-theme');
   const dark = attr ? attr === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
@@ -513,9 +615,9 @@ applyTheme();
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
-/* ================= personagem ================= */
+/* ================= character ================= */
 const hero = new THREE.Group();
-const body = new THREE.Group(); body.position.y = 0.47; hero.add(body);           // torso, braços e cabeça (pra inclinar)
+const body = new THREE.Group(); body.position.y = 0.47; hero.add(body);           // torso, arms and head (so they can lean)
 function leg(x) {
   const hip = new THREE.Group(); hip.position.set(x, 0.47, 0); hero.add(hip);
   const up = box(0.2, 0.25, 0.22, 0x29366f); up.position.y = -0.125; hip.add(up);
@@ -536,29 +638,29 @@ const torso = box(0.6, 0.5, 0.4, 0x3b5dc9); torso.position.y = 0.23; body.add(to
 const belt = box(0.62, 0.08, 0.42, 0x5e2f24); belt.position.y = 0.05; body.add(belt);
 const head = new THREE.Group(); head.position.y = 0.75; body.add(head);
 const skull = blob(sphere(0.3), 0.3, 0xf2c98a); skull.scale.set(1, 0.95, 1); head.add(skull);
-// cara de cansado: pálpebras caídas, olheiras e boca murcha
+// tired face: droopy eyelids, dark circles and a limp mouth
 [-1, 1].forEach(s => {
   const e = blob(sphere(0.04), 0.04, 0x1a1c2c); e.castShadow = false; e.position.set(s * 0.11, 0.03, 0.27); head.add(e);
   const lid = new THREE.Mesh(new THREE.SphereGeometry(0.047, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(0xe8b878));
-  lid.position.copy(e.position); lid.rotation.set(0.45, 0, -s * 0.22); head.add(lid);                                  // meio fechada, caída pra fora
-  const bag = blob(sphere(0.04), 0, 0x9c7480); bag.castShadow = false; bag.scale.set(1.2, 0.35, 0.4); bag.position.set(s * 0.11, -0.03, 0.272); head.add(bag);   // olheira
+  lid.position.copy(e.position); lid.rotation.set(0.45, 0, -s * 0.22); head.add(lid);                                  // half closed, drooping outward
+  const bag = blob(sphere(0.04), 0, 0x9c7480); bag.castShadow = false; bag.scale.set(1.2, 0.35, 0.4); bag.position.set(s * 0.11, -0.03, 0.272); head.add(bag);   // dark circle
 });
 const mouthM = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.011, 6, 12, Math.PI), mat(0x7a3b3b)); mouthM.scale.y = 0.45; mouthM.position.set(0.01, -0.15, 0.262); head.add(mouthM);
-// cabelo comprido e bagunçado (fica por baixo do headset)
+// long messy hair (sits under the headset)
 const HAIR = 0x3a2618;
 const hairTop = new THREE.Mesh(new THREE.SphereGeometry(0.325, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), mat(HAIR)); hairTop.castShadow = true;
 hairTop.position.y = 0.03; hairTop.rotation.x = -0.25; hairTop.scale.set(1.06, 1, 1.06); head.add(hairTop);
-const hairBack = blob(sphere(0.3), 0, HAIR); hairBack.scale.set(1.08, 1.45, 0.7); hairBack.position.set(0, -0.2, -0.13); head.add(hairBack);   // desce até os ombros
-[-1, 1].forEach(s => { const lock = blob(sphere(0.1), 0, HAIR); lock.scale.set(0.7, 2.1, 0.9); lock.position.set(s * 0.27, -0.2, 0.06); lock.rotation.z = s * 0.12; head.add(lock); });   // mechas dos lados
-[[-0.16, 0.5], [-0.05, 0.1], [0.07, -0.3], [0.18, -0.6]].forEach(([x, rz]) => {   // franja caindo na testa
+const hairBack = blob(sphere(0.3), 0, HAIR); hairBack.scale.set(1.08, 1.45, 0.7); hairBack.position.set(0, -0.2, -0.13); head.add(hairBack);   // down to the shoulders
+[-1, 1].forEach(s => { const lock = blob(sphere(0.1), 0, HAIR); lock.scale.set(0.7, 2.1, 0.9); lock.position.set(s * 0.27, -0.2, 0.06); lock.rotation.z = s * 0.12; head.add(lock); });   // side locks
+[[-0.16, 0.5], [-0.05, 0.1], [0.07, -0.3], [0.18, -0.6]].forEach(([x, rz]) => {   // bangs falling over the forehead
   const f = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.2, 8), mat(HAIR)); f.castShadow = true;
   f.position.set(x, 0.18, 0.25); f.rotation.set(Math.PI + 0.3, 0, rz); head.add(f);
 });
-[[-0.08, 0.6, 0.3], [0.1, -0.5, -0.4], [0, 0.1, 0.9]].forEach(([x, rx, rz]) => {   // fios espetados no topo
+[[-0.08, 0.6, 0.3], [0.1, -0.5, -0.4], [0, 0.1, 0.9]].forEach(([x, rx, rz]) => {   // spiky strands on top
   const sp = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 6), mat(HAIR)); sp.castShadow = true;
   sp.position.set(x, 0.33, rx * 0.1); sp.rotation.set(rx, 0, rz); head.add(sp);
 });
-// headset gamer com LED nas conchas e microfone
+// gaming headset with LED ear cups and mic
 const band = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.035, 8, 20, Math.PI), mat(0x1c1a24)); band.position.y = 0.02; head.add(band);
 [-1, 1].forEach(s => {
   const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.09, 16), mat(0x1c1a24)); cup.castShadow = true; cup.rotation.z = Math.PI / 2; cup.position.set(s * 0.33, 0, 0); head.add(cup);
@@ -566,11 +668,11 @@ const band = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.035, 8, 20, Math.PI)
 });
 const micArm = box(0.025, 0.025, 0.24, 0x1c1a24); micArm.position.set(-0.3, -0.1, 0.14); micArm.rotation.y = -0.35; head.add(micArm);
 const micTip = blob(sphere(0.035), 0, 0x1c1a24); micTip.position.set(-0.22, -0.1, 0.26); head.add(micTip);
-// objetos na mão
+// handheld objects
 const bookMesh = box(0.5, 0.06, 0.36, 0xffffff); const bookCover = box(0.52, 0.03, 0.38, 0x3b5dc9); bookCover.position.y = -0.04; bookMesh.add(bookCover);
 bookMesh.position.set(0, 0.41, 0.45); bookMesh.rotation.x = -0.6; bookMesh.visible = false; body.add(bookMesh);
 const pen = box(0.05, 0.28, 0.05, 0x1a1c2c); pen.position.set(0, -0.5, 0.05); pen.visible = false; armR.add(pen);
-// balão de pensamento 3D
+// 3D thought bubble
 const thought = new THREE.Group(); thought.position.set(0.5, 2.15, 0); thought.visible = false; hero.add(thought);
 const tb1 = blob(sphere(0.09), 0.09, 0xffffff); tb1.position.set(-0.2, -0.5, 0); thought.add(tb1);
 const tb2 = blob(sphere(0.14), 0.14, 0xffffff); tb2.position.set(-0.05, -0.25, 0); thought.add(tb2);
@@ -579,7 +681,7 @@ const gear = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.06, 12, 24), mat(0xe
 const cube = box(0.2, 0.2, 0.2, 0x3b5dc9); cube.position.set(0.25, 0.05, 0.1); thought.add(cube);
 hero.position.set(-1.2, FLOOR, 2.2); scene.add(hero);
 
-// confete (concluído)
+// confetti (done)
 const confetti = [];
 function popConfetti(n) {
   for (let i = 0; i < n; i++) {
@@ -591,8 +693,8 @@ function popConfetti(n) {
   }
 }
 
-/* ================= estações ================= */
-// spot: onde o personagem fica; yaw: pra onde olha; sit: sentado; knee: dobra do joelho (1 = cadeira, 0 = chão); cam: ângulo da câmera
+/* ================= stations ================= */
+// spot: where the character stands; yaw: where it faces; sit: seated; knee: knee bend (1 = chair, 0 = floor); cam: camera angle
 const STATIONS = {
   idle:     { spot: [BED.x, BED.z + 0.95], yaw: 0, sit: 0, lie: 1, lieY: 0.76, cam: 0.2, dist: 8, height: 5 },
   planning: { spot: [PLAN.x, PLAN.z + 0.2], yaw: Math.PI, sit: 1, knee: 1, seatY: 0.1, cam: -0.9, dist: 6.5, height: 4.2 },
@@ -628,11 +730,11 @@ function setMode(m) {
   if (location.hash.slice(1) !== m) history.replaceState(null, '', '#' + m);
   if (m === 'done') setTimeout(() => popConfetti(30), 900);
 }
-// o balão mostra o que o Claude está fazendo agora (o detalhe vem das ferramentas do chat)
+// the bubble shows what Claude is doing right now (the detail comes from the chat's tools)
 let activity = '';
 const statusText = () => mode === 'idle' ? 'zzz… ' + MODES.idle.sub : `${MODES[mode].label}: ${activity || MODES[mode].sub}`;
 window.setMode = setMode;
-// ---- barra de energia: used = % do limite de 5 h já usado; a barra mostra o que sobra ----
+// ---- energy bar: used = % of the 5 h limit already used; the bar shows what's left ----
 function setUsage(used, resetsAt) {
   if (typeof used !== 'number' || !isFinite(used)) return;
   used = Math.max(0, Math.min(100, used));
@@ -644,11 +746,11 @@ function setUsage(used, resetsAt) {
   el.setAttribute('aria-valuenow', left);
   document.getElementById('energyVal').textContent = left + '%';
   const r = resetsAt ? new Date(resetsAt < 1e12 ? resetsAt * 1000 : resetsAt) : null;
-  document.getElementById('energySub').textContent = (r && !isNaN(r) ? ` · Reset às ${r.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '');
+  document.getElementById('energySub').textContent = (r && !isNaN(r) ? ` · Resets at ${r.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '');
 }
 window.setUsage = setUsage;
-// ---- ponte com o Claude Code: recebe os modos do server.js via SSE ----
-const autoEl = { checked: true };   // demonstração automática: só quando a página abre sem o server.js
+// ---- bridge to Claude Code: receives modes from server.js via SSE ----
+const autoEl = { checked: true };   // automatic demo: only when the page opens without server.js
 let connected = false;
 if (/^https?:$/.test(location.protocol) && /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
   try {
@@ -660,11 +762,11 @@ if (/^https?:$/.test(location.protocol) && /^(localhost|127\.0\.0\.1)$/.test(loc
   } catch (_) {}
 }
 
-// ---- chat: o input manda POST /prompt; a resposta chega pelo SSE (evento "chat") ----
+// ---- chat: the input sends POST /prompt; the answer arrives over SSE ("chat" event) ----
 const chatEl = document.getElementById('chat'), logEl = document.getElementById('chatLog'), modesEl = document.getElementById('modes');
 const inputEl = document.getElementById('chatInput'), sendEl = document.getElementById('chatSend');
 const stopEl = document.getElementById('chatStop'), skillsEl = document.getElementById('skillList');
-let aiMsg = null, busy = false, permMode = 'acceptEdits', hasSession = false;
+let aiMsg = null, busy = false, permMode = 'normal', hasSession = false;
 const NEEDS_SESSION = ['compact', 'context'];
 function addLine(cls, text) {
   const d = document.createElement('div'); d.className = cls; d.textContent = text;
@@ -672,13 +774,13 @@ function addLine(cls, text) {
   logEl.appendChild(d); if (stick) logEl.scrollTop = logEl.scrollHeight;
   return d;
 }
-const TOOL_VERB = { Read: 'lendo', Grep: 'procurando', Glob: 'procurando arquivos', Edit: 'editando', Write: 'escrevendo' };
+const TOOL_VERB = { Read: 'reading', Grep: 'searching', Glob: 'finding files', Edit: 'editing', Write: 'writing' };
 function setBusy(b) {
   busy = b; sendEl.disabled = b; stopEl.disabled = !b;
   [...modesEl.children].forEach(el => { if (!['plan', 'normal'].includes(el.dataset.cmd)) el.disabled = b || (NEEDS_SESSION.includes(el.dataset.cmd) && !hasSession); });
   [...skillsEl.children].forEach(el => { el.disabled = b; });
 }
-// painel "Skills": um botão por skill; clicar roda /nome-da-skill no chat
+// "Skills" panel: one button per skill; clicking runs /skill-name in the chat
 function setSkills(list) {
   skillsEl.textContent = '';
   (list || []).forEach(s => {
@@ -690,13 +792,34 @@ function setSkills(list) {
   document.getElementById('skillEmpty').hidden = skillsEl.children.length > 0;
   document.getElementById('skills').hidden = false;
 }
+// "MCP" panel: one card per MCP server configured for the project (info only, nothing to run).
+// The dot shows the login/connection status: yellow = checking, green = connected, red = needs auth or failed.
+const MCP_STATUS = { checking: 'checking…', ok: 'connected', auth: 'needs authentication (run /mcp in Claude Code)', error: 'failed to connect' };
+function setMcps(list) {
+  const el = document.getElementById('mcpList');
+  el.textContent = '';
+  (list || []).forEach(s => {
+    const d = document.createElement('div'); d.className = 'btn'; d.dataset.status = s.status || 'checking';
+    d.innerHTML = '<span></span><i></i>'; d.firstChild.textContent = s.name; d.lastChild.textContent = s.type + ' · ' + s.scope;
+    d.title = (s.target || s.name) + '\n' + MCP_STATUS[d.dataset.status];
+    el.appendChild(d);
+  });
+  document.getElementById('mcpEmpty').hidden = el.children.length > 0;
+  document.getElementById('mcps').hidden = false;
+}
 function setPerm(pm) {
   permMode = pm;
   [...modesEl.children].forEach(el => { if (el.dataset.cmd === 'plan' || el.dataset.cmd === 'normal') el.setAttribute('aria-pressed', (el.dataset.cmd === 'plan') === (pm === 'plan')); });
 }
 function onChat(d) {
-  if (d.type === 'hello') { connected = true; hasSession = d.hasSession; logEl.textContent = ''; aiMsg = null; chatEl.hidden = false; document.getElementById('cmds').hidden = false; setSkills(d.skills); setBusy(d.busy); setPerm(d.permMode); }   // o servidor manda o histórico logo em seguida
+  if (d.type === 'hello') { connected = true; hasSession = d.hasSession; logEl.textContent = ''; aiMsg = null; chatEl.hidden = false; document.getElementById('cmds').hidden = false; setSkills(d.skills); setMcps(d.mcps); setBusy(d.busy); setPerm(d.permMode);   // the server sends the history right after
+    permDefaults = d.permDefaults; setPermissions(d.permissions);
+    if (!permissions && location.pathname !== '/settings') history.replaceState(null, '', '/settings' + location.hash);   // first run: onboarding
+    if (location.pathname === '/settings') showSettings();
+  }
+  else if (d.type === 'permissions') { setPermissions(d.permissions); addLine('msg note', 'Permissions updated — the next message uses them.'); }
   else if (d.type === 'perm') setPerm(d.permMode);
+  else if (d.type === 'mcps') setMcps(d.mcps);
   else if (d.type === 'activity') activity = d.text;
   else if (d.type === 'note') { aiMsg = null; addLine('msg note', d.text); }
   else if (d.type === 'start') { addLine('msg me', d.text); aiMsg = null; setBusy(true); }
@@ -707,36 +830,36 @@ function onChat(d) {
     logEl.scrollTop = logEl.scrollHeight;
   }
   else if (d.type === 'tool') {
-    aiMsg = null;   // o que ele está fazendo vai só pro balão, não pro chat
-    activity = `${TOOL_VERB[d.name] || 'usando ' + d.name} ${d.name === 'Glob' ? '' : d.target.split('/').pop()}`.trim();
+    aiMsg = null;   // what it's doing goes only to the bubble, not the chat
+    activity = `${TOOL_VERB[d.name] || 'using ' + d.name} ${d.name === 'Glob' ? '' : d.target.split('/').pop()}`.trim();
   }
   else if (d.type === 'result') {
     aiMsg = null;
     if (d.ok) hasSession = true;
-    if (!d.ok) { if (d.error !== 'interrompido') addLine('msg err', 'Erro: ' + d.error); else if (!d.replay) say('parei!', 2000); }
+    if (!d.ok) { if (d.error !== 'interrupted') addLine('msg err', 'Error: ' + d.error); else if (!d.replay) say('stopped!', 2000); }
   }
   else if (d.type === 'idle') setBusy(false);
   else if (d.type === 'reset') { logEl.textContent = ''; aiMsg = null; hasSession = false; setBusy(busy); }
 }
 function post(url, body) {
   return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
-    .then(r => r.ok ? null : r.json().then(j => say(j.error || 'erro', 2500)));
+    .then(r => r.ok ? null : r.json().then(j => say(j.error || 'error', 2500)));
 }
-// ---- ditado por voz (Web Speech API do navegador: Chrome, Edge, Safari) ----
+// ---- voice dictation (browser Web Speech API: Chrome, Edge, Safari) ----
 const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
 const micEl = document.getElementById('chatMic');
 let rec = null, micBase = '';
 function stopMic(discard) {
   if (!rec) return;
-  if (discard) rec.onresult = null;   // ao enviar, ignora o que ainda chegar depois
+  if (discard) rec.onresult = null;   // on send, ignore anything that still arrives
   rec.stop();
 }
 function startMic() {
   rec = new SpeechRec();
-  rec.lang = 'pt-BR'; rec.interimResults = true; rec.continuous = true;
-  micBase = inputEl.value.trim() ? inputEl.value.trim() + ' ' : '';   // continua depois do que já foi digitado
+  rec.lang = navigator.language || 'en-US'; rec.interimResults = true; rec.continuous = true;   // recognizes the language you speak (browser language)
+  micBase = inputEl.value.trim() ? inputEl.value.trim() + ' ' : '';   // continue after what was already typed
   rec.onresult = e => { inputEl.value = micBase + [...e.results].map(r => r[0].transcript.trim()).join(' '); inputEl.scrollTop = inputEl.scrollHeight; };
-  rec.onerror = e => say(e.error === 'not-allowed' ? 'preciso de permissão pro microfone' : e.error === 'no-speech' ? 'não ouvi nada' : 'o microfone falhou', 2500);
+  rec.onerror = e => say(e.error === 'not-allowed' ? 'I need microphone permission' : e.error === 'no-speech' ? 'didn’t hear anything' : 'the microphone failed', 2500);
   rec.onend = () => { rec = null; micEl.setAttribute('aria-pressed', 'false'); inputEl.focus(); };
   rec.start();
   micEl.setAttribute('aria-pressed', 'true');
@@ -748,40 +871,125 @@ document.getElementById('chatForm').addEventListener('submit', e => {
   const text = inputEl.value.trim(); if (!text || sendEl.disabled) return;
   stopMic(true);
   inputEl.value = '';
-  const c = text.match(/^\/(plan|compact|context|init|clear)$/);   // comando digitado = mesmo que clicar no botão
+  const c = text.match(/^\/(plan|compact|context|init|clear)$/);   // typed command = same as clicking the button
   if (c) runCommand(c[1]); else post('/prompt', { text });
 });
 inputEl.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); document.getElementById('chatForm').requestSubmit(); }
-  if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); runCommand(permMode === 'plan' ? 'normal' : 'plan'); }   // como no Claude Code
+  if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); runCommand(permMode === 'plan' ? 'normal' : 'plan'); }   // like in Claude Code
   if (e.key === 'Escape' && busy) runCommand('stop');
 });
 stopEl.onclick = () => runCommand('stop');
 function runCommand(name) { return post('/command', { name }); }
+// ---- "Talk to Claude" dropdown: the last 10 conversations; clicking one loads it and the next message continues it ----
+const sessBtn = document.getElementById('sessBtn'), sessMenu = document.getElementById('sessMenu');
+function closeSessions() { sessMenu.hidden = true; sessBtn.setAttribute('aria-expanded', 'false'); }
+function sessNote(text) { sessMenu.textContent = ''; const p = document.createElement('p'); p.textContent = text; sessMenu.appendChild(p); }
+async function openSessions() {
+  sessMenu.hidden = false; sessBtn.setAttribute('aria-expanded', 'true');
+  sessNote('Loading…');
+  let d; try { d = await (await fetch('/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'sessions' }) })).json(); } catch (_) { return sessNote('Couldn’t load the conversations.'); }
+  if (!d.sessions || !d.sessions.length) return sessNote('No previous conversations yet.');
+  sessMenu.textContent = '';
+  d.sessions.forEach(s => {
+    const b = document.createElement('button'); b.className = 'btn'; b.type = 'button'; b.disabled = busy;
+    b.innerHTML = '<span></span><i></i>'; b.firstChild.textContent = s.title; b.title = s.title;
+    b.lastChild.textContent = new Date(s.time).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    if (s.id === d.current) b.setAttribute('aria-current', 'true');
+    b.onclick = () => { closeSessions(); post('/command', { name: 'resume', session: s.id }); inputEl.focus(); };
+    sessMenu.appendChild(b);
+  });
+}
+sessBtn.onclick = () => sessMenu.hidden ? openSessions() : closeSessions();
+document.addEventListener('click', e => { if (!sessMenu.hidden && !e.target.closest('#sessMenu, #sessBtn')) closeSessions(); });
+addEventListener('keydown', e => { if (e.key === 'Escape' && !sessMenu.hidden) { closeSessions(); sessBtn.focus(); } });
 addEventListener('message', e => { if (e.data && typeof e.data.mode === 'string') setMode(e.data.mode); });
+// ---- /settings: pause-menu screen with the chat permissions; on first run it's the onboarding ----
+// Opening pushes /settings to the URL, so the browser's back button, Back and P (like a game's Start) all close it.
+const setDlg = document.getElementById('settings'), setForm = document.getElementById('setForm'), setBack = document.getElementById('setBack');
+const PERM_KEYS = ['edit', 'bash', 'web', 'mcp'];
+let permissions = null, permDefaults = null, paused = false;
+function showSettings() {
+  const first = !permissions, p = permissions || permDefaults || {};
+  PERM_KEYS.forEach(k => { setForm.elements[k].checked = !!p[k]; });
+  setForm.querySelectorAll('input[name="mode"]').forEach(r => { r.checked = r.value === p.mode; });
+  document.getElementById('setKicker').textContent = first ? 'Before we start' : 'Paused';
+  document.getElementById('setTitle').textContent = first ? 'Welcome' : 'Settings';
+  document.getElementById('setIntro').hidden = !first;
+  setBack.hidden = first;   // onboarding: the only way out is Save
+  if (!setDlg.open) setDlg.showModal();
+  paused = true;
+}
+function hideSettings() { if (setDlg.open) setDlg.close(); paused = false; }
+function openSettings() {
+  if (!connected || setDlg.open) return;
+  history.pushState({ settings: true }, '', '/settings' + location.hash);
+  showSettings();
+}
+function closeSettings() {
+  if (!permissions) return;
+  if (history.state && history.state.settings) history.back();   // popstate hides it
+  else { history.replaceState(null, '', '/' + location.hash); hideSettings(); }
+}
+addEventListener('popstate', () => {
+  if (location.pathname === '/settings') showSettings();
+  else if (permissions) hideSettings();
+  else history.replaceState(null, '', '/settings' + location.hash);   // onboarding: stay until saved
+});
+setDlg.addEventListener('cancel', e => { e.preventDefault(); closeSettings(); });   // Esc
+setBack.onclick = closeSettings;
+document.getElementById('setOpen').onclick = openSettings;
+addEventListener('keydown', e => {
+  if (e.key.toLowerCase() !== 'p' || e.metaKey || e.ctrlKey || e.altKey || e.target.matches('textarea, input[type="text"], [contenteditable]')) return;
+  e.preventDefault(); setDlg.open ? closeSettings() : openSettings();
+});
+setForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  const body = { mode: (setForm.querySelector('input[name="mode"]:checked') || {}).value };
+  PERM_KEYS.forEach(k => { body[k] = setForm.elements[k].checked; });
+  const saveEl = document.getElementById('setSave'); saveEl.disabled = true;
+  try {
+    const r = await fetch('/permissions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json();
+    if (!r.ok) return say(j.error || 'couldn’t save', 2500);
+    setPermissions(j.permissions);
+    closeSettings();
+  } catch (_) { say('couldn’t save', 2500); }
+  finally { saveEl.disabled = false; }
+});
+function setPermissions(p) {
+  permissions = p;
+  document.getElementById('mcpNote').textContent = p && p.mcp ? 'The chat here can use these servers.' : 'The chat here runs without MCP; turn it on in Settings.';
+}
 addEventListener('hashchange', () => setMode(location.hash.slice(1)));
 
 const COMMANDS = [
-  { cmd: 'normal',  key: '⇧Tab',     label: 'Executar',        sub: 'lê e edita arquivos' },
-  { cmd: 'plan',    key: '/plan',    label: 'Planejar',        sub: 'só lê e monta um plano' },
-  { cmd: 'compact', key: '/compact', label: 'Resumir',         sub: 'encurta a conversa' },
-  { cmd: 'context', key: '/context', label: 'Contexto',        sub: 'quanto da memória já usou' },
-  { cmd: 'init',    key: '/init',    label: 'Criar CLAUDE.md', sub: 'documenta o projeto' },
-  { cmd: 'clear',   key: '/clear',   label: 'Nova conversa',   sub: 'começa do zero' },
+  { cmd: 'normal',  key: '⇧Tab',     label: 'Execute',          sub: 'uses the permissions from Settings' },
+  { cmd: 'plan',    key: '/plan',    label: 'Plan',             sub: 'only reads and drafts a plan' },
+  { cmd: 'compact', key: '/compact', label: 'Compact',          sub: 'shortens the conversation' },
+  { cmd: 'context', key: '/context', label: 'Context',          sub: 'how much memory is used' },
+  { cmd: 'init',    key: '/init',    label: 'Create CLAUDE.md', sub: 'documents the project' },
+  { cmd: 'clear',   key: '/clear',   label: 'New chat',         sub: 'starts from scratch' },
 ];
 COMMANDS.forEach(c => {
   const b = document.createElement('button'); b.className = 'btn'; b.dataset.cmd = c.cmd;
-  b.innerHTML = '<kbd></kbd><span></span>'; b.title = c.sub;   // descrição só no tooltip
+  b.innerHTML = '<kbd></kbd><span></span>'; b.title = c.sub;   // description only in the tooltip
   b.children[0].textContent = c.key; b.children[1].textContent = c.label;
   if (c.cmd === 'plan' || c.cmd === 'normal') b.setAttribute('aria-pressed', c.cmd === 'normal');
   b.onclick = () => runCommand(c.cmd);
   modesEl.appendChild(b);
 });
+// accordion panels: closed by default; remember which ones were left open
+document.querySelectorAll('.acc details').forEach(d => {
+  const key = 'acc:' + d.dataset.key;
+  try { if (localStorage.getItem(key) === '1') d.open = true; } catch (_) {}
+  d.addEventListener('toggle', () => { try { localStorage.setItem(key, d.open ? '1' : '0'); } catch (_) {} });
+});
 const AUTO_ORDER = ['planning', 'coding', 'review', 'thinking', 'waiting', 'done', 'idle'];
 let autoT = 0;
 if (MODES[location.hash.slice(1)]) { autoEl.checked = false; setMode(location.hash.slice(1)); }
 
-/* ================= telas (canvas) ================= */
+/* ================= screens (canvas) ================= */
 let codeLines = [], screenT = 0, boardStep = 0, boardT = 0;
 function drawScreen(coding) {
   screenG.fillStyle = coding ? '#1a1c2c' : '#101420'; screenG.fillRect(0, 0, 56, 36);
@@ -819,7 +1027,7 @@ function drawBoard(step) {
 }
 drawScreen(false); drawBoard(0);
 
-/* ================= balão ================= */
+/* ================= bubble ================= */
 const bubble = document.getElementById('bubble');
 let sayText = '', sayUntil = 0;
 function say(t, ms = 1600) { sayText = t; sayUntil = performance.now() + ms; }
@@ -836,12 +1044,13 @@ const lerpAngle = (a, b, k) => { let d = Math.atan2(Math.sin(b - a), Math.cos(b 
 let tGlobal = 0, sayCooldown = 0;
 
 function tick() {
+  if (paused) { clock.getDelta(); requestAnimationFrame(tick); return; }   // settings open: the scene freezes, like a pause menu
   const dt = Math.min(clock.getDelta(), 0.05), now = performance.now();
   tGlobal += dt;
   const S = STATIONS[mode];
   const anim = reduce ? 0 : 1;
 
-  // ---- máquina de estados: levanta -> anda -> vira -> senta/age ----
+  // ---- state machine: stand up -> walk -> turn -> sit/act ----
   let moving = false;
   if (phase === 'stand') { sitF += (0 - sitF) * Math.min(1, dt * 6); lieF += (0 - lieF) * Math.min(1, dt * 4); if (sitF < 0.03 && lieF < 0.03) { sitF = 0; lieF = 0; phase = 'walk'; } }
   else if (phase === 'walk') {
@@ -862,7 +1071,7 @@ function tick() {
     actT += dt;
   }
 
-  // ---- pose base ----
+  // ---- base pose ----
   walkT = moving ? walkT + dt * 10 : walkT * 0.8;
   const sw = Math.sin(walkT) * (moving ? 0.7 : 0);
   legL.hip.rotation.x = sw - Math.PI / 2 * sitF; legR.hip.rotation.x = -sw - Math.PI / 2 * sitF;
@@ -876,11 +1085,11 @@ function tick() {
   screenGlow.intensity = 0;
   let breathing = Math.sin(tGlobal * 2.5) * 0.02 * anim;
 
-  // ---- ações por modo ----
+  // ---- actions per mode ----
   const t = actT;
   if (phase === 'act') switch (mode) {
     case 'idle': {
-      // dormindo de costas, respiração lenta
+      // sleeping on the back, slow breathing
       const br = Math.sin(t * 1.4) * anim;
       torso.scale.set(1 + br * 0.03, 1, 1 + br * 0.06);
       armL.rotation.z = 0.25; armR.rotation.z = -0.25; armL.rotation.x = armR.rotation.x = 0.05;
@@ -897,8 +1106,8 @@ function tick() {
     case 'planning': {
       body.rotation.x = 0.35;
       head.rotation.x = 0.45;
-      armL.rotation.x = -1.35; armL.rotation.z = 0.4;             // mão esquerda segura a folha
-      // caneta rabiscando: pequenos círculos e traços
+      armL.rotation.x = -1.35; armL.rotation.z = 0.4;             // left hand holds the sheet
+      // pen scribbling: small circles and strokes
       armR.rotation.x = -1.45 + Math.sin(t * 9) * 0.08 * anim;
       armR.rotation.z = -0.25 + Math.sin(t * 6.3) * 0.12 * anim;
       pen.visible = true;
@@ -906,12 +1115,12 @@ function tick() {
       thought.scale.setScalar(0.8 + Math.sin(t * 2) * 0.03);
       gear.rotation.z = t * 2 * anim; gear.rotation.x = 0.4; cube.rotation.y = t * 1.5 * anim; cube.rotation.x = t * 0.7;
       boardT += dt; if (boardT > 1.6 && anim) { boardT = 0; boardStep = (boardStep + 1) % 10; drawBoard(boardStep); }
-      // de vez em quando olha pro quadro
+      // looks at the whiteboard now and then
       if (Math.sin(t * 0.6) > 0.7) { head.rotation.x = -0.25; body.rotation.x = 0.05; }
       break;
     }
     case 'coding': {
-      const f = 26; // frenético
+      const f = 26; // frantic
       body.rotation.x = 0.28 + Math.sin(t * f / 2) * 0.01 * anim;
       head.rotation.x = 0.2; head.rotation.y = Math.sin(t * 3) * 0.08 * anim;
       armL.rotation.x = -1.25 + Math.max(0, Math.sin(t * f)) * 0.22 * anim; armL.rotation.z = 0.28;
@@ -926,12 +1135,12 @@ function tick() {
       body.rotation.x = 0.15 + breathing;
       bookMesh.visible = true;
       armL.rotation.x = -1.3; armL.rotation.z = 0.35; armR.rotation.x = -1.3; armR.rotation.z = -0.35;
-      head.rotation.x = 0.5; head.rotation.y = ((t * 0.8) % 1.2 - 0.6) * 0.5 * anim;  // lendo linha a linha
+      head.rotation.x = 0.5; head.rotation.y = ((t * 0.8) % 1.2 - 0.6) * 0.5 * anim;  // reading line by line
       if (Math.floor(t / 4) !== Math.floor((t - dt) / 4)) { armR.rotation.x = -1.7; }
       break;
     }
     case 'thinking': {
-      // anda de um lado pro outro no meio do quarto com a mão no queixo
+      // paces back and forth in the middle of the room, hand on chin
       const px = -1.2 + Math.sin(t * 0.9) * 1.3;
       const vx = Math.cos(t * 0.9);
       hero.position.x = px;
@@ -939,7 +1148,7 @@ function tick() {
       walkT += dt * 7 * anim; const s2 = Math.sin(walkT) * 0.5 * Math.abs(vx) * anim;
       legL.hip.rotation.x = s2; legR.hip.rotation.x = -s2;
       armL.rotation.x = -s2 * 0.6; armL.rotation.z = 0.12;
-      armR.rotation.x = -2.3; armR.rotation.z = -0.9;              // mão no queixo
+      armR.rotation.x = -2.3; armR.rotation.z = -0.9;              // hand on chin
       head.rotation.x = 0.25; head.rotation.z = 0.12; body.rotation.x = 0.1;
       hero.position.y = FLOOR + Math.abs(Math.sin(walkT)) * 0.04 * anim;
       thought.visible = true; thought.position.set(0.5, 2.15, 0); thought.scale.setScalar(1);
@@ -947,43 +1156,43 @@ function tick() {
       break;
     }
     case 'waiting': {
-      // sentado no chão, pernas esticadas, balança o pé e olha pra câmera
+      // sitting on the floor, legs stretched, wiggles a foot and looks at the camera
       legL.knee.rotation.x = 0; legR.knee.rotation.x = 0;
       legL.hip.rotation.x = -Math.PI / 2 * sitF + 0.15; legR.hip.rotation.x = -Math.PI / 2 * sitF + 0.15;
       legR.hip.rotation.z = Math.sin(t * 6) * 0.08 * anim; legL.hip.rotation.z = 0;
-      armL.rotation.x = 0.4; armL.rotation.z = 0.5; armR.rotation.x = 0.4; armR.rotation.z = -0.5;   // mãos apoiadas atrás
+      armL.rotation.x = 0.4; armL.rotation.z = 0.5; armR.rotation.x = 0.4; armR.rotation.z = -0.5;   // hands propped behind
       body.rotation.x = -0.15 + breathing;
       const toCam = Math.atan2(camPos.x - hero.position.x, camPos.z - hero.position.z) - hero.rotation.y;
       head.rotation.y = Math.atan2(Math.sin(toCam), Math.cos(toCam)) * 0.8;
       head.rotation.z = Math.sin(t * 0.8) * 0.12 * anim;
-      if (Math.sin(t * 1.5) > 0.9) { armR.rotation.x = -2.6; armR.rotation.z = -0.4; }   // acena de vez em quando
+      if (Math.sin(t * 1.5) > 0.9) { armR.rotation.x = -2.6; armR.rotation.z = -0.4; }   // waves now and then
       break;
     }
     case 'done': {
-      // pula comemorando
+      // jumps celebrating
       const j = Math.abs(Math.sin(t * 5)) * 0.55 * anim;
       hero.position.y = FLOOR + j;
       armL.rotation.x = -2.9; armR.rotation.x = -2.9; armL.rotation.z = 0.5 + Math.sin(t * 10) * 0.2 * anim; armR.rotation.z = -0.5 - Math.sin(t * 10) * 0.2 * anim;
       legL.hip.rotation.x = -0.4 * (j / 0.55); legR.hip.rotation.x = -0.4 * (j / 0.55); legL.knee.rotation.x = legR.knee.rotation.x = 0.8 * (j / 0.55);
       head.rotation.x = -0.25;
-      hero.rotation.y = S.yaw + (t > 2 && t < 3.2 ? (t - 2) / 1.2 * Math.PI * 2 : 0);          // um giro
+      hero.rotation.y = S.yaw + (t > 2 && t < 3.2 ? (t - 2) / 1.2 * Math.PI * 2 : 0);          // one spin
       if (anim && Math.floor(t / 2.5) !== Math.floor((t - dt) / 2.5) && t < 12) popConfetti(12);
       break;
     }
   }
   if (mode !== 'waiting') legL.hip.rotation.z = legR.hip.rotation.z = 0;
-  { const d = new Date(), mn = d.getMinutes() + d.getSeconds() / 60; hand1.rotation.z = -mn / 60 * Math.PI * 2; hand2.rotation.z = -((d.getHours() % 12) + mn / 60) / 12 * Math.PI * 2; }   // relógio de verdade
+  { const d = new Date(), mn = d.getMinutes() + d.getSeconds() / 60; hand1.rotation.z = -mn / 60 * Math.PI * 2; hand2.rotation.z = -((d.getHours() % 12) + mn / 60) / 12 * Math.PI * 2; }   // real-time clock
   if (mode !== 'coding') { screenT += dt; if (screenT > 0.5) { screenT = 0; drawScreen(false); } }
 
-  // ---- RGB: a cor corre pelas fitas de LED ----
+  // ---- RGB: the color runs along the LED strips ----
   const hue = reduce ? 0.8 : tGlobal * 0.12;
   leds.forEach(l => l.m.color.setHSL((hue + l.ph) % 1, 1, 0.55));
   lampShade.material.emissive.setHSL((hue + 0.15) % 1, 1, 0.5); lampLight.color.setHSL((hue + 0.15) % 1, 1, 0.6);
   pcLight.color.setHSL((hue + 0.5) % 1, 1, 0.6);
   fans.forEach(f => f.rotation.z += dt * 10 * anim);
-  neonFace.material.opacity = anim && Math.sin(tGlobal * 0.7) > 0.93 && Math.random() < 0.3 ? 0.35 : 1;   // neon falha de vez em quando
+  neonFace.material.opacity = anim && Math.sin(tGlobal * 0.7) > 0.93 && Math.random() < 0.3 ? 0.35 : 1;   // neon flickers now and then
 
-  // ---- confete ----
+  // ---- confetti ----
   for (let i = confetti.length - 1; i >= 0; i--) {
     const c = confetti[i]; c.userData.v.y -= 9 * dt;
     c.position.addScaledVector(c.userData.v, dt); c.rotation.x += c.userData.r.x * dt; c.rotation.y += c.userData.r.y * dt;
@@ -991,12 +1200,12 @@ function tick() {
     if (c.userData.t > 2.5) { scene.remove(c); confetti.splice(i, 1); }
   }
 
-  // ---- demo automática ----
+  // ---- automatic demo ----
   if (autoEl.checked) { autoT += dt; if (autoT > 9) { autoT = 0; setMode(AUTO_ORDER[(AUTO_ORDER.indexOf(mode) + 1) % AUTO_ORDER.length]); } }
 
-  // ---- câmera fixa, com zoom ----
+  // ---- fixed camera, with zoom ----
   const a = gameEl.clientWidth / gameEl.clientHeight;
-  const wide = a < 1.2;            // tela alta (celular): recua um pouco pra caber tudo
+  const wide = a < 1.2;            // tall screen (phone): pull back a bit so everything fits
   zoom += (zoomTarget - zoom) * Math.min(1, dt * 8);
   const base = new THREE.Vector3(0.6, wide ? 12.5 : 10, wide ? 15 : 12.5);
   const look = new THREE.Vector3(0, 0.6, -0.3);
@@ -1006,7 +1215,7 @@ function tick() {
 
   renderer.render(scene, camera);
 
-  // ---- balão de fala ----
+  // ---- speech bubble ----
   {
     const p = toScreen(hero.position.clone().add(new THREE.Vector3(0, 2.2 + (thought.visible ? 0.7 : 0), 0)));
     const t = now < sayUntil ? sayText : statusText();

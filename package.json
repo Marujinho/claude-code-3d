@@ -1,7 +1,7 @@
 {
-  "name": "escritorio-3d-claude",
+  "name": "office-3d-claude",
   "version": "1.0.0",
-  "description": "Escritório 3D que mostra o que o Claude Code está fazendo, com chat e comandos no navegador",
+  "description": "3D office that shows what Claude Code is doing, with chat and commands in the browser",
   "private": true,
   "main": "server.js",
   "scripts": {
