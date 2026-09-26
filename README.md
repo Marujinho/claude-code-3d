@@ -68,7 +68,17 @@ Character: the top of the screen lets you pick who works in the room. Clicking o
 
 To add one, add an entry to `CHARACTERS` in `office.html` (colors for the shared body plus a `build()` for the face, hair and accessories); it shows up in Settings automatically, with a portrait rendered from its `build()`. Changes to `server.js` need a server restart; `office.html` only needs a page reload.
 
-Your choices (permissions and character) are saved to `chat-permissions.json` next to `server.js` (per machine, git-ignored). To change them, open **⚙ Settings** (or press **P**, or go to `/settings`), change the options and **Save**. The file is written again and the next message uses the new permissions, with no restart needed. **Back**, **Esc**, **P** or the browser's back button close the screen without saving. Delete the file to see the onboarding again.
+Room: below the character, you can pick the room the character works in. All three share the same furniture layout (so every animation still fits), but reskin the shell — wallpaper, floor, the neon sign and the accent glow. Clicking one previews it behind the menu; **Save** keeps it.
+
+| Room | Look |
+|---|---|
+| Gamer Den | Neon purple with pink/cyan "GG · PLAYER ONE" sign, RGB everything |
+| Sunset Lo-Fi | Warm woods and amber glow, "lofi · BEATS TO CODE" sign |
+| Cyber Lab | Cool teal walls, sci-fi "SYS · ONLINE" sign |
+
+To add one, add an entry to `ROOMS` in `office.html` (wallpaper and floor colors, the neon sign, the accent glow and the background tint); it shows up in Settings automatically with a swatch preview.
+
+Your choices (permissions, character and room) are saved to `chat-permissions.json` next to `server.js` (per machine, git-ignored). To change them, open **⚙ Settings** (or press **P**, or go to `/settings`), change the options and **Save**. The file is written again and the next message uses the new permissions, with no restart needed. **Back**, **Esc**, **P** or the browser's back button close the screen without saving. Delete the file to see the onboarding again.
 
 ## Commands (right panel)
 
